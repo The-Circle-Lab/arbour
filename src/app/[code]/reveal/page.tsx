@@ -45,17 +45,22 @@ export default function RevealPage() {
       const teamData = await teamRes.json()
       setTeamId(teamData.id)
 
-      // Check for cached AI result
-      const aiRes = await fetch(`/api/reveal-ai/${code.toUpperCase()}`)
-      if (aiRes.ok) {
-        setAiResult(await aiRes.json())
-      } else {
-        // Generate AI comparison
-        setLoadingAI(true)
-        const genRes = await fetch(`/api/reveal-ai/${code.toUpperCase()}`, { method: 'POST' })
-        if (genRes.ok) setAiResult(await genRes.json())
-        setLoadingAI(false)
+      // Check for cached AI result, generate if missing (only one device needs to trigger it)
+      setLoadingAI(true)
+      let aiData = null
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const aiRes = await fetch(`/api/reveal-ai/${code.toUpperCase()}`)
+        if (aiRes.ok) { aiData = await aiRes.json(); break }
+        // Only attempt POST once per page load to avoid hammering
+        if (attempt === 0) {
+          await fetch(`/api/reveal-ai/${code.toUpperCase()}`, { method: 'POST' })
+          await new Promise(r => setTimeout(r, 3000))
+        } else {
+          await new Promise(r => setTimeout(r, 2000))
+        }
       }
+      if (aiData) setAiResult(aiData)
+      setLoadingAI(false)
     }
 
     load()
