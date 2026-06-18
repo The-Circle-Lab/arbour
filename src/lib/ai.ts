@@ -148,12 +148,13 @@ Respond with valid JSON only, no markdown:
 }`
 
   const message = await client.messages.create({
-    model: MODEL,
+    model: MODEL_FAST,
     max_tokens: 500,
     messages: [{ role: 'user', content: prompt }],
   })
 
-  const text = (message.content[0] as { type: string; text: string }).text
+  const raw = (message.content[0] as { type: string; text: string }).text
+  const text = raw.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim()
   const parsed = JSON.parse(text)
 
   return {

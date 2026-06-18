@@ -1,3 +1,5 @@
+export const maxDuration = 60
+
 import { NextResponse } from 'next/server'
 import { query, queryOne } from '@/lib/db'
 import { computePlantState, CheckinRow } from '@/lib/plant-logic'
