@@ -45,7 +45,9 @@ export default function RevealPage() {
       const teamData = await teamRes.json()
       setTeamId(teamData.id)
 
-      // Poll for AI result — generation is triggered server-side when reflections are fetched
+      // Trigger AI generation (idempotent — returns cached if already done)
+      fetch(`/api/reveal-ai/${code.toUpperCase()}`, { method: 'POST' }).catch(() => {})
+      // Poll GET until result is cached
       await pollForAI(code)
     }
 
