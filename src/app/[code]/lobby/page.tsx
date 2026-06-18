@@ -16,8 +16,14 @@ export default function LobbyPage() {
   const identity = loadMember()
 
   const [teamName, setTeamName] = useState('')
+  const [teamId, setTeamId] = useState('')
   const [members, setMembers] = useState<Member[]>([])
   const [copied, setCopied] = useState(false)
+  const [projectTitle, setProjectTitle] = useState('')
+  const [deadline, setDeadline] = useState('')
+  const [brief, setBrief] = useState('')
+  const [briefSaved, setBriefSaved] = useState(false)
+  const [briefSaving, setBriefSaving] = useState(false)
 
   useEffect(() => {
     if (!identity) { router.replace('/'); return }
@@ -26,7 +32,11 @@ export default function LobbyPage() {
       if (!res.ok) return
       const data = await res.json()
       setTeamName(data.name)
+      setTeamId(data.id)
       setMembers(data.members)
+      if (data.project_title) setProjectTitle(data.project_title)
+      if (data.deadline) setDeadline(data.deadline.slice(0, 10))
+      if (data.assignment_brief) setBrief(data.assignment_brief)
     }
     poll()
     const interval = setInterval(poll, 4000)
@@ -41,6 +51,24 @@ export default function LobbyPage() {
 
   function handleStart() {
     router.push(`/${code}/reflect`)
+  }
+
+  async function handleSaveBrief() {
+    if (!teamId) return
+    setBriefSaving(true)
+    await fetch('/api/teams', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        teamId,
+        projectTitle: projectTitle.trim() || undefined,
+        deadline: deadline || undefined,
+        assignmentBrief: brief.trim() || undefined,
+      }),
+    })
+    setBriefSaving(false)
+    setBriefSaved(true)
+    setTimeout(() => setBriefSaved(false), 2000)
   }
 
   const isCreator = members[0]?.id === identity?.memberId
@@ -108,6 +136,41 @@ export default function LobbyPage() {
             )}
           </div>
         </div>
+
+        {/* Project context — creator only */}
+        {isCreator && (
+          <div className="bg-white rounded-2xl border border-stone-100 shadow-sm p-5 mb-5">
+            <p className="text-xs text-stone-400 uppercase tracking-wide font-medium mb-3">Project details <span className="normal-case text-stone-300">(optional — helps Arbor give better analysis)</span></p>
+            <div className="flex flex-col gap-3">
+              <input
+                className="border border-stone-200 rounded-lg px-3 py-2 text-sm text-stone-800 focus:outline-none focus:ring-2 focus:ring-green-500"
+                placeholder="Project title"
+                value={projectTitle}
+                onChange={e => setProjectTitle(e.target.value)}
+              />
+              <input
+                type="date"
+                className="border border-stone-200 rounded-lg px-3 py-2 text-sm text-stone-800 focus:outline-none focus:ring-2 focus:ring-green-500"
+                value={deadline}
+                onChange={e => setDeadline(e.target.value)}
+              />
+              <textarea
+                className="border border-stone-200 rounded-lg px-3 py-2 text-sm text-stone-800 resize-none focus:outline-none focus:ring-2 focus:ring-green-500"
+                rows={3}
+                placeholder="Paste assignment brief or rubric here…"
+                value={brief}
+                onChange={e => setBrief(e.target.value)}
+              />
+              <button
+                onClick={handleSaveBrief}
+                disabled={briefSaving}
+                className="text-sm text-green-700 border border-green-600 rounded-lg py-2 hover:bg-green-50 transition disabled:opacity-40"
+              >
+                {briefSaved ? '✓ Saved' : briefSaving ? 'Saving…' : 'Save project details'}
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Co-presence note */}
         <div className="bg-amber-50 border border-amber-100 rounded-xl px-4 py-3 mb-4 text-sm text-amber-800">

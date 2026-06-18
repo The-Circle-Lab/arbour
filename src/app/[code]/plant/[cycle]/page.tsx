@@ -3,14 +3,14 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { loadMember } from '@/lib/member-store'
-import { PlantVisual } from '@/components/PlantVisual'
+import { PlantVisual, PlantState } from '@/components/PlantVisual'
 import { WaitingRoom } from '@/components/WaitingRoom'
 import { COMPONENT_LABELS, ChatComponent } from '@/lib/chat-components'
 
-interface PlantState {
-  computed_state: 'thriving' | 'healthy' | 'struggling' | 'wilting'
+interface PlantData {
+  computed_state: PlantState
   flagged_components: ChatComponent[]
-  ai_nudge_text: string
+  ai_nudge_text: string | string[]
 }
 
 interface Resolution {
@@ -24,7 +24,7 @@ export default function PlantPage() {
   const identity = loadMember()
   const cycleNum = parseInt(cycle)
 
-  const [plantState, setPlantState] = useState<PlantState | null>(null)
+  const [plantData, setPlantData] = useState<PlantData | null>(null)
   const [resolutions, setResolutions] = useState<Resolution[]>([])
   const [teamId, setTeamId] = useState('')
   const [teamSize, setTeamSize] = useState(2)
@@ -49,7 +49,7 @@ export default function PlantPage() {
     const plantRes = await fetch(`/api/plant/${code.toUpperCase()}/${cycleNum}`)
     if (plantRes.ok) {
       const data = await plantRes.json()
-      if (data.computed_state) setPlantState(data)
+      if (data.computed_state) setPlantData(data)
     }
 
     const resRes = await fetch(`/api/resolutions?teamId=${teamData.id}&cycle=${cycleNum}`)
@@ -76,12 +76,10 @@ export default function PlantPage() {
     setSaving(s => ({ ...s, [component]: false }))
   }
 
-  // Check if all flags are resolved → navigate to next phase
   useEffect(() => {
-    if (!plantState) return
-    const flagged = plantState.flagged_components
+    if (!plantData) return
+    const flagged = plantData.flagged_components
     if (flagged.length === 0) {
-      // No flags — proceed immediately
       if (cycleNum === 1) setTimeout(() => router.push(`/${code}/checkin/2`), 2000)
       else setTimeout(() => router.push(`/${code}/start`), 2000)
       return
@@ -91,9 +89,9 @@ export default function PlantPage() {
       if (cycleNum === 1) setTimeout(() => router.push(`/${code}/checkin/2`), 1500)
       else setTimeout(() => router.push(`/${code}/start`), 1500)
     }
-  }, [plantState, resolutions, cycleNum, code, router])
+  }, [plantData, resolutions, cycleNum, code, router])
 
-  if (!plantState) {
+  if (!plantData) {
     return (
       <main className="min-h-screen bg-stone-50 flex items-center justify-center p-6">
         <WaitingRoom
@@ -104,12 +102,29 @@ export default function PlantPage() {
     )
   }
 
-  const flagged = plantState.flagged_components
+  const flagged = plantData.flagged_components
   const resolvedComponents = resolutions.map(r => r.component)
   const allFlagsResolved = flagged.every(f => resolvedComponents.includes(f))
 
+  // Normalise nudge to array of bullets
+  const nudgeBullets: string[] = Array.isArray(plantData.ai_nudge_text)
+    ? plantData.ai_nudge_text
+    : plantData.ai_nudge_text
+      ? plantData.ai_nudge_text
+          .split(/\n|(?<=\.)\s+(?=[A-Z])/)
+          .map(s => s.trim())
+          .filter(Boolean)
+      : []
+
+  const STATE_BG: Record<PlantState, string> = {
+    thriving: 'bg-green-50',
+    doing_okay: 'bg-amber-50',
+    wilting: 'bg-orange-50',
+    dead: 'bg-red-50',
+  }
+
   return (
-    <main className="min-h-screen bg-stone-50 p-6 flex flex-col items-center">
+    <main className={`min-h-screen ${STATE_BG[plantData.computed_state]} p-6 flex flex-col items-center`}>
       <div className="w-full max-w-xl">
         <div className="text-center mb-2">
           <p className="text-xs text-stone-400 uppercase tracking-wide font-medium">Cycle {cycleNum} · Team health</p>
@@ -117,28 +132,37 @@ export default function PlantPage() {
 
         <div className="flex flex-col items-center my-8">
           <PlantVisual
-            state={plantState.computed_state}
+            state={plantData.computed_state}
             onClick={flagged.length > 0 ? () => setRevealed(r => !r) : undefined}
-            size={200}
+            size={180}
           />
           {flagged.length > 0 && !revealed && (
             <p className="text-sm text-stone-400 mt-3">Tap the plant to see what's off</p>
           )}
         </div>
 
-        {/* Nudge + flagged components */}
         {(revealed || flagged.length === 0) && (
           <div className="bg-white rounded-2xl shadow-sm border border-stone-100 p-6 mb-4">
             {flagged.length === 0 ? (
               <p className="text-green-700 font-medium text-center">Your team is aligned — no tensions detected.</p>
             ) : (
               <>
-                <div className="bg-amber-50 rounded-xl p-4 mb-5">
-                  <p className="text-xs font-semibold text-amber-600 uppercase tracking-wide mb-1">Team nudge</p>
-                  <p className="text-sm text-amber-900">{plantState.ai_nudge_text}</p>
-                </div>
+                {/* Nudge as bullet points */}
+                {nudgeBullets.length > 0 && (
+                  <div className="bg-amber-50 rounded-xl p-4 mb-5">
+                    <p className="text-xs font-semibold text-amber-600 uppercase tracking-wide mb-2">Team nudge</p>
+                    <ul className="space-y-2">
+                      {nudgeBullets.map((bullet, i) => (
+                        <li key={i} className="flex gap-2 text-sm text-amber-900">
+                          <span className="text-amber-400 mt-0.5">•</span>
+                          <span>{bullet}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
 
-                <h3 className="text-sm font-semibold text-stone-700 mb-3">Flagged components</h3>
+                <h3 className="text-sm font-semibold text-stone-700 mb-3">What's off</h3>
                 <div className="flex flex-col gap-4">
                   {flagged.map(comp => {
                     const resolved = resolvedComponents.includes(comp)
@@ -157,7 +181,7 @@ export default function PlantPage() {
                             <textarea
                               className="w-full border border-amber-200 rounded-lg px-3 py-2 text-sm text-stone-800 resize-none focus:outline-none focus:ring-1 focus:ring-amber-400 mb-2"
                               rows={2}
-                              placeholder="What did you discuss and agree on? (optional)"
+                              placeholder="What did you discuss and decide? (optional)"
                               value={resolutionNotes[comp] ?? ''}
                               onChange={e => setResolutionNotes(n => ({ ...n, [comp]: e.target.value }))}
                             />

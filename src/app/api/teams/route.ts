@@ -31,3 +31,24 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: String(e) }, { status: 500 })
   }
 }
+
+export async function PATCH(req: Request) {
+  try {
+    const { teamId, projectTitle, deadline, assignmentBrief } = await req.json()
+    if (!teamId) return NextResponse.json({ error: 'teamId required' }, { status: 400 })
+
+    await query(
+      `UPDATE teams SET
+        project_title = COALESCE($2, project_title),
+        deadline = COALESCE($3::date, deadline),
+        assignment_brief = COALESCE($4, assignment_brief)
+       WHERE id = $1`,
+      [teamId, projectTitle ?? null, deadline ?? null, assignmentBrief ?? null]
+    )
+
+    return NextResponse.json({ ok: true })
+  } catch (e) {
+    console.error('PATCH /api/teams error:', e)
+    return NextResponse.json({ error: String(e) }, { status: 500 })
+  }
+}

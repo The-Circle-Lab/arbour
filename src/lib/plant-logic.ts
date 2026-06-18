@@ -1,12 +1,14 @@
 import { CHAT_COMPONENTS, ChatComponent, Rating, RATING_VALUES } from './chat-components'
 
-const FLAG_THRESHOLD = 1.0
-const DIVERGENCE_BONUS = 0.5
+// Lower threshold so any single slightly_off in a 2-person team gets flagged
+const FLAG_THRESHOLD = 0.5
+const DIVERGENCE_BONUS_LARGE = 0.5  // one aligned, one very_off
+const DIVERGENCE_BONUS_SMALL = 0.25 // one aligned, one slightly_off
 
 const STATE_THRESHOLDS = {
-  thriving: 0,
-  healthy: 2,
-  struggling: 4,
+  thriving: 0,   // 0 flagged
+  doing_okay: 2, // 1-2 flagged
+  wilting: 4,    // 3-4 flagged
 } as const
 
 export interface CheckinRow {
@@ -30,7 +32,7 @@ function getWorstRating(data: CheckinRow['response_data']): Rating | null {
 }
 
 export interface PlantResult {
-  state: 'thriving' | 'healthy' | 'struggling' | 'wilting'
+  state: 'thriving' | 'doing_okay' | 'wilting' | 'dead'
   flaggedComponents: ChatComponent[]
   componentScores: Record<ChatComponent, number>
 }
@@ -55,9 +57,8 @@ export function computePlantState(checkins: CheckinRow[], teamSize: number): Pla
       for (let i = 0; i < ratings.length; i++) {
         for (let j = i + 1; j < ratings.length; j++) {
           const diff = Math.abs(RATING_VALUES[ratings[i]] - RATING_VALUES[ratings[j]])
-          if (diff === 2) {
-            divergenceBonus += DIVERGENCE_BONUS / (teamSize - 1)
-          }
+          if (diff === 2) divergenceBonus += DIVERGENCE_BONUS_LARGE / (teamSize - 1)
+          else if (diff === 1) divergenceBonus += DIVERGENCE_BONUS_SMALL / (teamSize - 1)
         }
       }
     }
@@ -77,12 +78,12 @@ export function computePlantState(checkins: CheckinRow[], teamSize: number): Pla
   let state: PlantResult['state']
   if (flagCount <= STATE_THRESHOLDS.thriving) {
     state = 'thriving'
-  } else if (flagCount <= STATE_THRESHOLDS.healthy) {
-    state = 'healthy'
-  } else if (flagCount <= STATE_THRESHOLDS.struggling) {
-    state = 'struggling'
-  } else {
+  } else if (flagCount <= STATE_THRESHOLDS.doing_okay) {
+    state = 'doing_okay'
+  } else if (flagCount <= STATE_THRESHOLDS.wilting) {
     state = 'wilting'
+  } else {
+    state = 'dead'
   }
 
   return { state, flaggedComponents, componentScores }

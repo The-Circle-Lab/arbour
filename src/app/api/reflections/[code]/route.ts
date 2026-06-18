@@ -6,8 +6,8 @@ import { ChatComponent } from '@/lib/chat-components'
 export async function GET(_req: Request, { params }: { params: Promise<{ code: string }> }) {
   const { code } = await params
 
-  const team = await queryOne<{ id: string }>(
-    'SELECT id FROM teams WHERE join_code = $1',
+  const team = await queryOne<{ id: string; project_title: string | null; deadline: string | null; assignment_brief: string | null }>(
+    'SELECT id, project_title, deadline, assignment_brief FROM teams WHERE join_code = $1',
     [code.toUpperCase()]
   )
   if (!team) return NextResponse.json({ error: 'Team not found' }, { status: 404 })
@@ -57,7 +57,13 @@ export async function GET(_req: Request, { params }: { params: Promise<{ code: s
       }
       memberMap.get(row.member_id)!.responses[row.component as ChatComponent] = row.response_data
     }
-    generateRevealComparison(Array.from(memberMap.values()))
+    const projectContext = [
+      team.project_title ? `Title: ${team.project_title}` : '',
+      team.deadline ? `Deadline: ${team.deadline}` : '',
+      team.assignment_brief ? `Brief: ${team.assignment_brief}` : '',
+    ].filter(Boolean).join('\n') || undefined
+
+    generateRevealComparison(Array.from(memberMap.values()), projectContext)
       .then(result => query(
         `INSERT INTO reveal_ai (team_id, per_component, flagged_components)
          VALUES ($1, $2, $3) ON CONFLICT (team_id) DO NOTHING`,

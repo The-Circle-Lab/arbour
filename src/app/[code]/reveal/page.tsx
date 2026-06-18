@@ -5,6 +5,15 @@ import { useParams, useRouter } from 'next/navigation'
 import { loadMember } from '@/lib/member-store'
 import { CHAT_COMPONENTS, COMPONENT_LABELS, COMPONENT_DESCRIPTIONS, ChatComponent } from '@/lib/chat-components'
 
+const NEGOTIATION_NUDGES: Record<ChatComponent, string> = {
+  object:            'This difference is worth talking about — what does success actually mean to each of you, in practice?',
+  subject:           'This difference is worth talking about — what kind of role do you each picture yourself in, day to day?',
+  division_of_labor: 'This difference is worth talking about — who owns what, and does that match what you\'re each expecting to carry?',
+  rules:             'This difference is worth talking about — what does it actually feel like to work well together, and do you mean the same thing?',
+  tools:             'This difference is worth talking about — can you land on a specific list of tools you\'ll both actually use?',
+  community:         'This difference is worth talking about — who gets a say in how you work, and is that expectation shared?',
+}
+
 interface Reflection {
   member_id: string
   display_name: string
@@ -183,6 +192,11 @@ export default function RevealPage() {
                 {flagged.includes(activeComponent) ? 'Alignment gap' : 'Arbor summary'}
               </p>
               <p>{aiResult.per_component[activeComponent]}</p>
+              {flagged.includes(activeComponent) && (
+                <p className="mt-3 text-xs italic opacity-75 border-t border-amber-200 pt-3">
+                  {NEGOTIATION_NUDGES[activeComponent]}
+                </p>
+              )}
             </div>
           )}
         </div>

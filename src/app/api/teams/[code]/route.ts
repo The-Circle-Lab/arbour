@@ -4,8 +4,8 @@ import { getTeamStatus } from '@/lib/phase'
 
 export async function GET(_req: Request, { params }: { params: Promise<{ code: string }> }) {
   const { code } = await params
-  const team = await queryOne<{ id: string; name: string; join_code: string }>(
-    'SELECT id, name, join_code FROM teams WHERE join_code = $1',
+  const team = await queryOne<{ id: string; name: string; join_code: string; project_title: string | null; deadline: string | null; assignment_brief: string | null }>(
+    'SELECT id, name, join_code, project_title, deadline, assignment_brief FROM teams WHERE join_code = $1',
     [code.toUpperCase()]
   )
   if (!team) return NextResponse.json({ error: 'Team not found' }, { status: 404 })

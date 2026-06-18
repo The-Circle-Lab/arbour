@@ -15,7 +15,7 @@ export interface RevealAIResult {
   flaggedComponents: ChatComponent[]
 }
 
-export async function generateRevealComparison(members: MemberReflection[]): Promise<RevealAIResult> {
+export async function generateRevealComparison(members: MemberReflection[], projectContext?: string): Promise<RevealAIResult> {
   const memberSummaries = members.map(m => {
     const sections = Object.entries(m.responses).map(([comp, data]) =>
       `[${COMPONENT_LABELS[comp as ChatComponent]}]\n${JSON.stringify(data, null, 2)}`
@@ -23,8 +23,12 @@ export async function generateRevealComparison(members: MemberReflection[]): Pro
     return `=== ${m.displayName} ===\n${sections}`
   }).join('\n\n')
 
-  const prompt = `You are analyzing a student team's individual reflections using CHAT (Cultural-Historical Activity Theory).
+  const contextSection = projectContext
+    ? `\nProject context: ${projectContext}\n`
+    : ''
 
+  const prompt = `You are analyzing a student team's individual reflections using CHAT (Cultural-Historical Activity Theory).
+${contextSection}
 The team has ${members.length} members. Their individual reflections across six CHAT components are below.
 
 ${memberSummaries}
@@ -108,7 +112,7 @@ export interface CheckinSummary {
 
 export interface NudgeResult {
   flaggedComponents: ChatComponent[]
-  nudgeText: string
+  nudgeBullets: string[]
 }
 
 export async function generateCheckinNudge(
@@ -139,12 +143,12 @@ ${checkinText}
 
 Identify which CHAT components show tension — any "very_off" rating, OR divergence between members' ratings for the same component (one says aligned, another says very_off).
 
-Then write ONE short nudge: 2-3 plain-language sentences naming the specific gap without blame. Reference what was originally agreed vs. what members are now reporting. Do not tell them what to do.
+Then write 2-4 short nudge bullets naming specific gaps without blame. Reference what was originally agreed vs. what members are now reporting. Do not tell them what to do. Each bullet is one plain sentence.
 
 Respond with valid JSON only, no markdown:
 {
   "flagged_components": ["component_name", ...],
-  "nudge": "..."
+  "nudge_bullets": ["...", "...", "..."]
 }`
 
   const message = await client.messages.create({
@@ -159,6 +163,6 @@ Respond with valid JSON only, no markdown:
 
   return {
     flaggedComponents: parsed.flagged_components as ChatComponent[],
-    nudgeText: parsed.nudge as string,
+    nudgeBullets: (parsed.nudge_bullets ?? [parsed.nudge].filter(Boolean)) as string[],
   }
 }

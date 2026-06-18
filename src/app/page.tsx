@@ -81,10 +81,10 @@ export default function LandingPage() {
 
               <div className="bg-white rounded-2xl border border-stone-100 shadow-sm p-5 text-left mb-8">
                 <p className="text-sm text-stone-600 leading-relaxed">
-                  Most team breakdowns aren't about bad attitudes — they're about structure. People start work without ever making their assumptions explicit: what success means, who owns what, how decisions get made.
+                  Arbor helps teams get aligned before they start working. You each reflect privately on six areas of your collaboration, compare answers side-by-side, and write a shared agreement. As work progresses, short check-ins surface tension early — visualised as a plant that reflects your team's health.
                 </p>
                 <p className="text-sm text-stone-600 leading-relaxed mt-3">
-                  Arbor is grounded in <span className="font-medium text-stone-800">Activity Theory</span>, which treats collaboration as a system — goals, roles, rules, tools, and community — not just a collection of individuals. Before you start working, Arbor makes that system visible, so you can align on it rather than discover its gaps later.
+                  It's built on <span className="font-medium text-stone-800">Activity Theory</span>: a framework that maps collaboration across goals, roles, rules, tools, and community.
                 </p>
               </div>
             </div>

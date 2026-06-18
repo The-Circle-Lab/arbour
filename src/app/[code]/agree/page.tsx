@@ -377,7 +377,7 @@ export default function AgreePage() {
         {/* Continue button */}
         {allDone ? (
           <button
-            onClick={() => router.push(`/${code}/checkin/1`)}
+            onClick={() => router.push(`/${code}/plant-intro`)}
             className="w-full bg-green-700 text-white rounded-xl py-4 text-lg font-medium hover:bg-green-800 transition"
           >
             Continue to check-ins →

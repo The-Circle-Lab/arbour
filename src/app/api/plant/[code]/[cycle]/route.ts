@@ -20,7 +20,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ code: s
   const cached = await queryOne<{
     computed_state: string
     flagged_components: string[]
-    ai_nudge_text: string
+    ai_nudge_text: string | string[]
   }>(
     'SELECT computed_state, flagged_components, ai_nudge_text FROM plant_states WHERE team_id = $1 AND cycle_number = $2',
     [team.id, cycleNum]
@@ -97,12 +97,12 @@ export async function GET(_req: Request, { params }: { params: Promise<{ code: s
     `INSERT INTO plant_states (team_id, cycle_number, computed_state, flagged_components, ai_nudge_text)
      VALUES ($1, $2, $3, $4, $5)
      ON CONFLICT (team_id, cycle_number) DO NOTHING`,
-    [team.id, cycleNum, plantResult.state, allFlagged, nudgeResult.nudgeText]
+    [team.id, cycleNum, plantResult.state, allFlagged, JSON.stringify(nudgeResult.nudgeBullets)]
   )
 
   return NextResponse.json({
     computed_state: plantResult.state,
     flagged_components: allFlagged,
-    ai_nudge_text: nudgeResult.nudgeText,
+    ai_nudge_text: nudgeResult.nudgeBullets,
   })
 }
