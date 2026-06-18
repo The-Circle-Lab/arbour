@@ -37,14 +37,20 @@ export default function RevealPage() {
   const [aiResult, setAiResult] = useState<RevealAI | null>(null)
   const [loadingAI, setLoadingAI] = useState(false)
   const [activeComponent, setActiveComponent] = useState<ChatComponent>('object')
+  const [waitingForTeam, setWaitingForTeam] = useState(true)
 
   useEffect(() => {
     if (!identity) { router.replace('/'); return }
 
     async function load() {
-      const refRes = await fetch(`/api/reflections/${code.toUpperCase()}`)
-      if (!refRes.ok) { router.replace(`/${code}`); return }
-      const refData = await refRes.json()
+      let refData = null
+      for (let attempt = 0; attempt < 60; attempt++) {
+        const refRes = await fetch(`/api/reflections/${code.toUpperCase()}`)
+        if (refRes.ok) { refData = await refRes.json(); break }
+        await new Promise(r => setTimeout(r, 4000))
+      }
+      if (!refData) return
+      setWaitingForTeam(false)
       setReflections(refData.reflections)
 
       const unique = Array.from(new Set<string>(refData.reflections.map((r: Reflection) => r.display_name)))
@@ -106,6 +112,17 @@ export default function RevealPage() {
 
   function handleProceedToAgreement() {
     router.push(`/${code}/agree`)
+  }
+
+  if (waitingForTeam) {
+    return (
+      <main className="min-h-screen bg-stone-50 flex items-center justify-center p-6">
+        <div className="text-center">
+          <p className="text-stone-700 font-medium mb-1">Waiting for everyone to finish reflecting</p>
+          <p className="text-stone-400 text-sm">You'll see the comparison once all responses are in.</p>
+        </div>
+      </main>
+    )
   }
 
   return (
