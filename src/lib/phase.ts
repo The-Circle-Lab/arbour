@@ -33,7 +33,7 @@ export async function getTeamStatus(teamId: string): Promise<TeamStatus> {
     [teamId]
   )
 
-  const [{ count: reflCount }] = await query<{ count: number }>(
+  const reflRows = await query<{ count: number }>(
     `SELECT COUNT(DISTINCT member_id)::int AS count
      FROM individual_reflections ir
      JOIN members m ON m.id = ir.member_id
@@ -41,9 +41,9 @@ export async function getTeamStatus(teamId: string): Promise<TeamStatus> {
      GROUP BY m.team_id
      HAVING COUNT(DISTINCT ir.component) = 6`,
     [teamId]
-  ).catch(() => [{ count: 0 }])
+  ).catch(() => [])
 
-  const reflectionsSubmitted = reflCount ?? 0
+  const reflectionsSubmitted = reflRows[0]?.count ?? 0
   const allReflected = reflectionsSubmitted >= team_size
 
   // All 6 agreements fully approved by all members
