@@ -46,19 +46,30 @@ export default function RevealPage() {
       setTeamId(teamData.id)
 
       // Poll for AI result — generation is triggered server-side when reflections are fetched
-      setLoadingAI(true)
-      let aiData = null
-      for (let attempt = 0; attempt < 15; attempt++) {
-        const aiRes = await fetch(`/api/reveal-ai/${code.toUpperCase()}`)
-        if (aiRes.ok) { aiData = await aiRes.json(); break }
-        await new Promise(r => setTimeout(r, 3000))
-      }
-      if (aiData) setAiResult(aiData)
-      setLoadingAI(false)
+      await pollForAI(code)
     }
 
     load()
   }, [code, identity, router])
+
+  const [aiTimedOut, setAiTimedOut] = useState(false)
+
+  async function pollForAI(teamCode: string) {
+    setLoadingAI(true)
+    setAiTimedOut(false)
+    let aiData = null
+    for (let attempt = 0; attempt < 40; attempt++) {
+      const aiRes = await fetch(`/api/reveal-ai/${teamCode.toUpperCase()}`)
+      if (aiRes.ok) { aiData = await aiRes.json(); break }
+      await new Promise(r => setTimeout(r, 3000))
+    }
+    if (aiData) {
+      setAiResult(aiData)
+    } else {
+      setAiTimedOut(true)
+    }
+    setLoadingAI(false)
+  }
 
   const flagged = aiResult?.flagged_components ?? []
 
@@ -151,6 +162,17 @@ export default function RevealPage() {
           {loadingAI && (
             <div className="bg-green-50 rounded-xl p-4 text-sm text-green-700 animate-pulse">
               Analyzing alignment…
+            </div>
+          )}
+          {aiTimedOut && !aiResult && (
+            <div className="bg-amber-50 rounded-xl p-4 text-sm text-amber-800 flex items-center justify-between">
+              <span>Analysis is taking longer than expected.</span>
+              <button
+                onClick={() => pollForAI(code as string)}
+                className="ml-4 px-3 py-1.5 bg-amber-700 text-white rounded-lg text-xs font-medium hover:bg-amber-800 transition"
+              >
+                Retry
+              </button>
             </div>
           )}
           {aiResult && (
