@@ -122,11 +122,16 @@ export default function AgreePage() {
     setEditDirty(false)
   }, [activeComponent])
 
-  // Sync draft from server only if user hasn't made local edits
+  // Sync draft from server unless user has unsaved local edits
   useEffect(() => {
-    if (editDirty) return
     const ag = agreements[activeComponent]
-    if (ag?.final_text) setEditText(ag.final_text)
+    const serverText = ag?.final_text ?? ''
+    // Only block sync if user has typed something different from the server value
+    if (editDirty && editText !== serverText) return
+    if (serverText) {
+      setEditText(serverText)
+      setEditDirty(false)
+    }
   }, [agreements])
 
   async function handleSaveText() {
