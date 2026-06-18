@@ -7,7 +7,7 @@ import { CHAT_COMPONENTS, COMPONENT_LABELS, COMPONENT_DESCRIPTIONS, REFLECTION_Q
 import { WaitingRoom } from '@/components/WaitingRoom'
 import { ArborLogo } from '@/components/ArborLogo'
 
-type Responses = Record<ChatComponent, Record<string, string | string[]>>
+type Responses = Record<ChatComponent, Record<string, string | string[] | Record<string, string>>>
 
 export default function ReflectPage() {
   const { code } = useParams<{ code: string }>()
@@ -44,12 +44,18 @@ export default function ReflectPage() {
     const compResponses = responses[currentComponent] ?? {}
     return questions.every(q => {
       if (q.type === 'multiselect') return ((compResponses[q.id] as string[]) ?? []).length > 0
-      if (q.type === 'choice') {
-        const val = compResponses[q.id] as string | undefined
-        return !!val
+      if (q.type === 'choice') return !!(compResponses[q.id] as string | undefined)
+      if (q.type === 'priority-rank') {
+        const sel = (compResponses[q.id] as Record<string, string>) ?? {}
+        return (q.options ?? []).every(opt => !!sel[opt])
       }
       return (compResponses[q.id] as string | undefined)?.trim()
     })
+  }
+
+  function setPriorityLevel(questionId: string, option: string, level: string) {
+    const current = (responses[currentComponent]?.[questionId] as Record<string, string>) ?? {}
+    setValue(currentComponent, questionId, { ...current, [option]: level })
   }
 
   async function handleSubmit() {
@@ -147,6 +153,15 @@ export default function ReflectPage() {
                         onChange={e => setValue(currentComponent, `${q.id}_other`, e.target.value)}
                       />
                     )}
+                    {q.withOpenText && (
+                      <textarea
+                        className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm text-stone-800 resize-none focus:outline-none focus:ring-2 focus:ring-green-500 mt-1"
+                        rows={2}
+                        value={(compResponses[`${q.id}_open`] as string) ?? ''}
+                        onChange={e => setValue(currentComponent, `${q.id}_open`, e.target.value)}
+                        placeholder="Anything to add in your own words…"
+                      />
+                    )}
                   </div>
                 )}
 
@@ -172,6 +187,49 @@ export default function ReflectPage() {
                             />
                           )}
                         </label>
+                      )
+                    })}
+                    {q.withOpenText && (
+                      <textarea
+                        className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm text-stone-800 resize-none focus:outline-none focus:ring-2 focus:ring-green-500 mt-1"
+                        rows={2}
+                        value={(compResponses[`${q.id}_open`] as string) ?? ''}
+                        onChange={e => setValue(currentComponent, `${q.id}_open`, e.target.value)}
+                        placeholder="Anything to add in your own words…"
+                      />
+                    )}
+                  </div>
+                )}
+
+                {q.type === 'priority-rank' && q.options && (
+                  <div className="flex flex-col gap-2">
+                    {q.options.map(opt => {
+                      const sel = (compResponses[q.id] as Record<string, string>) ?? {}
+                      const current = sel[opt]
+                      return (
+                        <div key={opt} className="flex items-center gap-3 border border-stone-200 rounded-lg px-3 py-2.5">
+                          <span className="text-sm text-stone-700 flex-1">{opt}</span>
+                          <div className="flex gap-1">
+                            {(['High', 'Medium', 'Low'] as const).map(level => (
+                              <button
+                                key={level}
+                                type="button"
+                                onClick={() => setPriorityLevel(q.id, opt, level)}
+                                className={`px-2.5 py-1 rounded-md text-xs font-semibold border transition ${
+                                  current === level
+                                    ? level === 'High'
+                                      ? 'bg-green-600 text-white border-green-600'
+                                      : level === 'Medium'
+                                      ? 'bg-amber-400 text-white border-amber-400'
+                                      : 'bg-stone-400 text-white border-stone-400'
+                                    : 'bg-white text-stone-400 border-stone-200 hover:bg-stone-50'
+                                }`}
+                              >
+                                {level}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
                       )
                     })}
                   </div>

@@ -27,7 +27,7 @@ export const COMPONENT_DESCRIPTIONS: Record<ChatComponent, string> = {
   community: 'Who has a say in this project, and who doesn\'t',
 }
 
-export const REFLECTION_QUESTIONS: Record<ChatComponent, { id: string; question: string; type: 'text' | 'multiselect' | 'choice'; options?: string[] }[]> = {
+export const REFLECTION_QUESTIONS: Record<ChatComponent, { id: string; question: string; type: 'text' | 'multiselect' | 'choice' | 'priority-rank'; options?: string[]; withOpenText?: boolean }[]> = {
   object: [
     {
       id: 'success_definition',
@@ -36,9 +36,9 @@ export const REFLECTION_QUESTIONS: Record<ChatComponent, { id: string; question:
     },
     {
       id: 'priority',
-      question: 'If you had to protect one thing above all else in this project, what would it be?',
-      type: 'choice',
-      options: ['The quality of the final output', 'Meeting the deadline', 'Learning something new', 'A fair and smooth team experience', 'Other'],
+      question: 'Rank each of these by how much they matter to you in this project:',
+      type: 'priority-rank',
+      options: ['Quality of the final output', 'Meeting the deadline', 'Learning something new', 'A fair and smooth team experience'],
     },
   ],
   subject: [
@@ -49,15 +49,15 @@ export const REFLECTION_QUESTIONS: Record<ChatComponent, { id: string; question:
     },
     {
       id: 'preferred_role',
-      question: 'What kind of contributor do you naturally tend to be in group work?',
-      type: 'choice',
-      options: ['I take the lead and coordinate', 'I focus on executing my part well', 'I move between tasks as needed', 'I keep the group accountable', 'Other'],
+      question: 'What kind of contributor do you tend to be in group work? Select all that apply.',
+      type: 'multiselect',
+      options: ['I take the lead and coordinate', 'I focus on executing my part well', 'I move between tasks as needed', 'I keep the group accountable', 'Hybrid — depends on the task', 'Other'],
     },
   ],
   division_of_labor: [
     {
       id: 'expected_role',
-      question: 'What part of the work do you expect or want to own?',
+      question: 'What area of the work do you see yourself taking the lead on?',
       type: 'text',
     },
     {
@@ -65,6 +65,7 @@ export const REFLECTION_QUESTIONS: Record<ChatComponent, { id: string; question:
       question: 'What does a fair workload split look like to you?',
       type: 'choice',
       options: ['Equal hours from everyone', 'Weighted by skills and strengths', 'Flexible — whoever has capacity does more', 'Agreed role-based division', 'Other'],
+      withOpenText: true,
     },
     {
       id: 'avoid',
@@ -85,9 +86,10 @@ export const REFLECTION_QUESTIONS: Record<ChatComponent, { id: string; question:
     },
     {
       id: 'decisions',
-      question: 'How should the team make decisions when there\'s disagreement?',
-      type: 'choice',
+      question: 'How should the team make decisions when there\'s disagreement? Select all that apply.',
+      type: 'multiselect',
       options: ['Consensus — everyone must agree', 'Majority vote', 'Whoever owns that area decides', 'One person has final say', 'Other'],
+      withOpenText: true,
     },
     {
       id: 'quality',

@@ -109,6 +109,11 @@ export default function LobbyPage() {
           </div>
         </div>
 
+        {/* Co-presence note */}
+        <div className="bg-amber-50 border border-amber-100 rounded-xl px-4 py-3 mb-4 text-sm text-amber-800">
+          <span className="font-semibold">Best in the same room or on a call.</span> Individual reflection can be done separately, but everything from the reveal onward needs live discussion.
+        </div>
+
         <button
           onClick={handleStart}
           disabled={members.length < 2}

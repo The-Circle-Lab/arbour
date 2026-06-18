@@ -68,9 +68,14 @@ export default function RevealPage() {
 
   function formatResponse(data: Record<string, unknown>): string {
     return Object.entries(data)
-      .filter(([k]) => !k.endsWith('_other'))
-      .map(([k, v]) => {
+      .filter(([k]) => !k.endsWith('_other') && !k.endsWith('_open'))
+      .map(([, v]) => {
         if (Array.isArray(v)) return v.join(', ')
+        if (v && typeof v === 'object') {
+          return Object.entries(v as Record<string, string>)
+            .map(([opt, level]) => `${opt}: ${level}`)
+            .join(', ')
+        }
         return v as string
       })
       .filter(Boolean)
@@ -151,7 +156,7 @@ export default function RevealPage() {
           {aiResult && (
             <div className={`rounded-xl p-4 text-sm ${flagged.includes(activeComponent) ? 'bg-amber-50 text-amber-900' : 'bg-green-50 text-green-900'}`}>
               <p className="font-semibold mb-1 text-xs uppercase tracking-wide opacity-60">
-                {flagged.includes(activeComponent) ? 'Alignment gap' : 'AI summary'}
+                {flagged.includes(activeComponent) ? 'Alignment gap' : 'Arbor summary'}
               </p>
               <p>{aiResult.per_component[activeComponent]}</p>
             </div>
@@ -173,7 +178,7 @@ export default function RevealPage() {
               onClick={handleProceedToAgreement}
               className="w-full bg-green-700 text-white rounded-xl py-3 font-medium hover:bg-green-800 transition"
             >
-              Proceed to group agreements →
+              Discuss, then write agreements →
             </button>
           </div>
         )}
