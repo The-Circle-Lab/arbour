@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm --version)",
+      "PowerShell(Get-ChildItem \"C:\\\\Program Files\\\\nodejs\" -ErrorAction SilentlyContinue ; Get-ChildItem \"$env:APPDATA\\\\npm\" -ErrorAction SilentlyContinue ; Get-ChildItem \"$env:LOCALAPPDATA\\\\nvm\" -ErrorAction SilentlyContinue ; Get-ChildItem \"C:\\\\nvm\" -ErrorAction SilentlyContinue)",
+      "Bash(npx --version)",
+      "PowerShell(node --version)",
+      "PowerShell(npm --version)",
+      "PowerShell(npx --version)",
+      "PowerShell($env:PATH = [System.Environment]::GetEnvironmentVariable\\(\"PATH\",\"Machine\"\\) + \";\" + [System.Environment]::GetEnvironmentVariable\\(\"PATH\",\"User\"\\); node --version; npm --version)"
+    ]
+  }
+}
