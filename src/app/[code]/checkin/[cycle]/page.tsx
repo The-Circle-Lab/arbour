@@ -93,7 +93,7 @@ export default function CheckinPage() {
           message="Waiting for teammates"
           subMessage="You'll see the plant state once everyone has checked in."
           pollUrl={`/api/plant/${code.toUpperCase()}/${cycleNum}`}
-          readyCheck={(d: unknown) => !(d as { ready?: boolean }).ready === false && !!(d as { computed_state?: string }).computed_state}
+          readyCheck={(d: unknown) => !!(d as { computed_state?: string }).computed_state}
           onReady={() => router.push(`/${code}/plant/${cycleNum}`)}
         />
       </main>
