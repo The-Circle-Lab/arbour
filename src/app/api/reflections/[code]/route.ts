@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import { query, queryOne } from '@/lib/db'
+import { generateRevealComparison, MemberReflection } from '@/lib/ai'
+import { ChatComponent } from '@/lib/chat-components'
 
 export async function GET(_req: Request, { params }: { params: Promise<{ code: string }> }) {
   const { code } = await params
@@ -44,6 +46,25 @@ export async function GET(_req: Request, { params }: { params: Promise<{ code: s
      ORDER BY m.joined_at, ir.component`,
     [team.id]
   )
+
+  // Kick off AI generation server-side if not already done (fire-and-forget, no await)
+  const existing = await queryOne('SELECT id FROM reveal_ai WHERE team_id = $1', [team.id])
+  if (!existing) {
+    const memberMap = new Map<string, MemberReflection>()
+    for (const row of reflections) {
+      if (!memberMap.has(row.member_id)) {
+        memberMap.set(row.member_id, { displayName: row.display_name, responses: {} as MemberReflection['responses'] })
+      }
+      memberMap.get(row.member_id)!.responses[row.component as ChatComponent] = row.response_data
+    }
+    generateRevealComparison(Array.from(memberMap.values()))
+      .then(result => query(
+        `INSERT INTO reveal_ai (team_id, per_component, flagged_components)
+         VALUES ($1, $2, $3) ON CONFLICT (team_id) DO NOTHING`,
+        [team.id, JSON.stringify(result.perComponent), result.flaggedComponents]
+      ))
+      .catch(e => console.error('reveal-ai generation error:', e))
+  }
 
   return NextResponse.json({ ready: true, reflections, teamSize: team_size })
 }

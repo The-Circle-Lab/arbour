@@ -45,19 +45,13 @@ export default function RevealPage() {
       const teamData = await teamRes.json()
       setTeamId(teamData.id)
 
-      // Check for cached AI result, generate if missing (only one device needs to trigger it)
+      // Poll for AI result — generation is triggered server-side when reflections are fetched
       setLoadingAI(true)
       let aiData = null
-      for (let attempt = 0; attempt < 3; attempt++) {
+      for (let attempt = 0; attempt < 15; attempt++) {
         const aiRes = await fetch(`/api/reveal-ai/${code.toUpperCase()}`)
         if (aiRes.ok) { aiData = await aiRes.json(); break }
-        // Only attempt POST once per page load to avoid hammering
-        if (attempt === 0) {
-          await fetch(`/api/reveal-ai/${code.toUpperCase()}`, { method: 'POST' })
-          await new Promise(r => setTimeout(r, 3000))
-        } else {
-          await new Promise(r => setTimeout(r, 2000))
-        }
+        await new Promise(r => setTimeout(r, 3000))
       }
       if (aiData) setAiResult(aiData)
       setLoadingAI(false)
