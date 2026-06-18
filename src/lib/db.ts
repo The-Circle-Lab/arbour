@@ -1,16 +1,21 @@
 import { Pool } from 'pg'
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL?.includes('neon.tech') || process.env.NODE_ENV === 'production'
-    ? { rejectUnauthorized: false }
-    : false,
-})
+let _pool: Pool | null = null
 
-export default pool
+function getPool(): Pool {
+  if (!_pool) {
+    const connectionString = process.env.DATABASE_URL
+    if (!connectionString) throw new Error('DATABASE_URL is not set')
+    _pool = new Pool({
+      connectionString,
+      ssl: { rejectUnauthorized: false },
+    })
+  }
+  return _pool
+}
 
 export async function query<T = unknown>(text: string, params?: unknown[]): Promise<T[]> {
-  const res = await pool.query(text, params)
+  const res = await getPool().query(text, params)
   return res.rows as T[]
 }
 
