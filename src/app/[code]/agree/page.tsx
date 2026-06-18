@@ -180,6 +180,9 @@ export default function AgreePage() {
   const totalApproved = CHAT_COMPONENTS.filter(c => getStatus(c) === 'approved').length
   const allDone = totalApproved === CHAT_COMPONENTS.length
 
+  const isCreator = members[0]?.id === identity?.memberId
+  const creatorName = members[0]?.display_name ?? 'your teammate'
+
   const ag = agreements[activeComponent]
   const isFlagged = flaggedComponents.includes(activeComponent)
   const compApprovals = approvals.filter(a => a.component === activeComponent)
@@ -285,24 +288,33 @@ export default function AgreePage() {
           {/* Resolution note (flagged only) */}
           {isFlagged && !fullyApproved && (
             <div className="mb-4">
-              <label className="block text-sm font-medium text-stone-700 mb-1">
-                Resolution note
-                <span className="text-stone-400 font-normal ml-1">— what did you discuss and decide?</span>
-              </label>
-              <textarea
-                className="w-full border border-amber-200 rounded-lg px-3 py-2 text-sm text-stone-800 resize-none focus:outline-none focus:ring-2 focus:ring-amber-400"
-                rows={2}
-                value={resolutionNote}
-                onChange={e => setResolutionNote(e.target.value)}
-                placeholder="e.g. Annie takes UI, Michael takes the usability study"
-              />
-              <button
-                onClick={() => generateDraft(activeComponent, teamId, resolutionNote)}
-                disabled={generating[activeComponent] || !resolutionNote.trim()}
-                className="mt-2 w-full border border-green-600 text-green-700 rounded-lg py-2 text-sm font-medium hover:bg-green-50 disabled:opacity-40 transition"
-              >
-                {generating[activeComponent] ? 'Generating agreement…' : ag?.draft_text ? 'Regenerate with new note' : 'Generate agreement draft'}
-              </button>
+              {isCreator ? (
+                <>
+                  <label className="block text-sm font-medium text-stone-700 mb-1">
+                    Resolution note
+                    <span className="text-stone-400 font-normal ml-1">: what did you discuss and decide?</span>
+                  </label>
+                  <textarea
+                    className="w-full border border-amber-200 rounded-lg px-3 py-2 text-sm text-stone-800 resize-none focus:outline-none focus:ring-2 focus:ring-amber-400"
+                    rows={2}
+                    value={resolutionNote}
+                    onChange={e => setResolutionNote(e.target.value)}
+                    placeholder="e.g. Annie takes UI, Michael takes the usability study"
+                  />
+                  <p className="text-xs text-stone-400 mt-1">Your teammates will see this once you generate the agreement draft.</p>
+                  <button
+                    onClick={() => generateDraft(activeComponent, teamId, resolutionNote)}
+                    disabled={generating[activeComponent] || !resolutionNote.trim()}
+                    className="mt-2 w-full border border-green-600 text-green-700 rounded-lg py-2 text-sm font-medium hover:bg-green-50 disabled:opacity-40 transition"
+                  >
+                    {generating[activeComponent] ? 'Generating agreement…' : ag?.draft_text ? 'Regenerate with new note' : 'Generate agreement draft'}
+                  </button>
+                </>
+              ) : (
+                <div className="bg-stone-50 rounded-xl px-4 py-3 text-sm text-stone-500">
+                  Waiting for {creatorName} to write the resolution note and generate a draft — you'll be able to approve it once it's ready.
+                </div>
+              )}
             </div>
           )}
 
