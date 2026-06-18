@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { ChatComponent, COMPONENT_LABELS } from './chat-components'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+const MODEL_FAST = 'claude-haiku-4-5-20251001'
 const MODEL = 'claude-sonnet-4-6'
 
 export interface MemberReflection {
@@ -45,7 +46,7 @@ Respond with valid JSON only, no markdown:
 }`
 
   const message = await client.messages.create({
-    model: MODEL,
+    model: MODEL_FAST,
     max_tokens: 1500,
     messages: [{ role: 'user', content: prompt }],
   })
