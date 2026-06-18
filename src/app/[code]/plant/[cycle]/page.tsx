@@ -106,15 +106,19 @@ export default function PlantPage() {
   const resolvedComponents = resolutions.map(r => r.component)
   const allFlagsResolved = flagged.every(f => resolvedComponents.includes(f))
 
-  // Normalise nudge to array of bullets
-  const nudgeBullets: string[] = Array.isArray(plantData.ai_nudge_text)
-    ? plantData.ai_nudge_text
-    : plantData.ai_nudge_text
-      ? plantData.ai_nudge_text
-          .split(/\n|(?<=\.)\s+(?=[A-Z])/)
-          .map(s => s.trim())
-          .filter(Boolean)
-      : []
+  // Normalise nudge to array of bullets — handle string, JSON string array, or array
+  function parseNudge(raw: string | string[]): string[] {
+    if (Array.isArray(raw)) return raw.filter(Boolean)
+    if (typeof raw === 'string') {
+      const trimmed = raw.trim()
+      if (trimmed.startsWith('[')) {
+        try { return (JSON.parse(trimmed) as string[]).filter(Boolean) } catch { /* fall through */ }
+      }
+      return trimmed.split(/\n|(?<=\.)\s+(?=[A-Z])/).map(s => s.trim()).filter(Boolean)
+    }
+    return []
+  }
+  const nudgeBullets = parseNudge(plantData.ai_nudge_text)
 
   const STATE_BG: Record<PlantState, string> = {
     thriving: 'bg-green-50',
