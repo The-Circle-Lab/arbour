@@ -29,8 +29,8 @@ export default function PlantPage() {
   const [teamId, setTeamId] = useState('')
   const [teamSize, setTeamSize] = useState(2)
   const [revealed, setRevealed] = useState(false)
-  const [resolutionNotes, setResolutionNotes] = useState<Record<string, string>>({})
-  const [saving, setSaving] = useState<Record<string, boolean>>({})
+  const [resolutionNote, setResolutionNote] = useState('')
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     if (!identity) { router.replace('/'); return }
@@ -59,21 +59,23 @@ export default function PlantPage() {
     }
   }
 
-  async function handleResolve(component: ChatComponent) {
-    setSaving(s => ({ ...s, [component]: true }))
-    await fetch('/api/resolutions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        teamId,
-        component,
-        cycleNumber: cycleNum,
-        resolutionNote: resolutionNotes[component] ?? null,
-        memberId: identity!.memberId,
-      }),
-    })
+  async function handleResolveAll() {
+    setSaving(true)
+    await Promise.all(flagged.map(component =>
+      fetch('/api/resolutions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          teamId,
+          component,
+          cycleNumber: cycleNum,
+          resolutionNote: resolutionNote || null,
+          memberId: identity!.memberId,
+        }),
+      })
+    ))
     await loadAll()
-    setSaving(s => ({ ...s, [component]: false }))
+    setSaving(false)
   }
 
   useEffect(() => {
@@ -167,41 +169,39 @@ export default function PlantPage() {
                 )}
 
                 <h3 className="text-sm font-semibold text-stone-700 mb-3">What's off</h3>
-                <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-2 mb-5">
                   {flagged.map(comp => {
                     const resolved = resolvedComponents.includes(comp)
                     return (
                       <div
                         key={comp}
-                        className={`border rounded-xl p-4 ${resolved ? 'border-green-200 bg-green-50' : 'border-amber-200 bg-amber-50'}`}
+                        className={`flex items-center justify-between border rounded-xl px-4 py-3 ${resolved ? 'border-green-200 bg-green-50' : 'border-amber-200 bg-amber-50'}`}
                       >
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="font-medium text-sm text-stone-800">{COMPONENT_LABELS[comp as ChatComponent]}</span>
-                          {resolved && <span className="text-xs text-green-700 font-semibold">✓ Resolved</span>}
-                        </div>
-
-                        {!resolved && (
-                          <>
-                            <textarea
-                              className="w-full border border-amber-200 rounded-lg px-3 py-2 text-sm text-stone-800 resize-none focus:outline-none focus:ring-1 focus:ring-amber-400 mb-2"
-                              rows={2}
-                              placeholder="What did you discuss and decide? (optional)"
-                              value={resolutionNotes[comp] ?? ''}
-                              onChange={e => setResolutionNotes(n => ({ ...n, [comp]: e.target.value }))}
-                            />
-                            <button
-                              onClick={() => handleResolve(comp as ChatComponent)}
-                              disabled={saving[comp]}
-                              className="w-full bg-stone-800 text-white rounded-lg py-2 text-sm font-medium hover:bg-stone-900 disabled:opacity-40 transition"
-                            >
-                              {saving[comp] ? 'Saving…' : 'Mark as resolved'}
-                            </button>
-                          </>
-                        )}
+                        <span className="text-sm font-medium text-stone-800">{COMPONENT_LABELS[comp as ChatComponent]}</span>
+                        {resolved && <span className="text-xs text-green-700 font-semibold">✓ Resolved</span>}
                       </div>
                     )
                   })}
                 </div>
+
+                {!allFlagsResolved && (
+                  <>
+                    <textarea
+                      className="w-full border border-amber-200 rounded-lg px-3 py-2 text-sm text-stone-800 resize-none focus:outline-none focus:ring-1 focus:ring-amber-400 mb-3"
+                      rows={2}
+                      placeholder="Anything else you discussed and decided? (optional)"
+                      value={resolutionNote}
+                      onChange={e => setResolutionNote(e.target.value)}
+                    />
+                    <button
+                      onClick={handleResolveAll}
+                      disabled={saving}
+                      className="w-full bg-stone-800 text-white rounded-lg py-2.5 text-sm font-medium hover:bg-stone-900 disabled:opacity-40 transition"
+                    >
+                      {saving ? 'Saving…' : 'We\'ve talked through everything →'}
+                    </button>
+                  </>
+                )}
               </>
             )}
           </div>
