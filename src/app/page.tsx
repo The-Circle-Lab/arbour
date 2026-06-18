@@ -3,10 +3,11 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { saveMember } from '@/lib/member-store'
+import { ArborLogo } from '@/components/ArborLogo'
 
 export default function LandingPage() {
   const router = useRouter()
-  const [mode, setMode] = useState<'choose' | 'create' | 'join'>('choose')
+  const [mode, setMode] = useState<'home' | 'create' | 'join'>('home')
   const [teamName, setTeamName] = useState('')
   const [joinCode, setJoinCode] = useState('')
   const [displayName, setDisplayName] = useState('')
@@ -35,7 +36,7 @@ export default function LandingPage() {
       if (!joinRes.ok) throw new Error(member.error)
 
       saveMember({ memberId: member.id, displayName: member.display_name, teamId: team.id, joinCode: team.join_code })
-      router.push(`/${team.join_code}`)
+      router.push(`/${team.join_code}/lobby`)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Something went wrong.')
     } finally {
@@ -57,7 +58,7 @@ export default function LandingPage() {
       if (!joinRes.ok) throw new Error(member.error)
 
       saveMember({ memberId: member.id, displayName: member.display_name, teamId: member.teamId, joinCode: member.joinCode })
-      router.push(`/${member.joinCode}`)
+      router.push(`/${member.joinCode}/lobby`)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Something went wrong.')
     } finally {
@@ -68,31 +69,49 @@ export default function LandingPage() {
   return (
     <main className="min-h-screen bg-stone-50 flex items-center justify-center p-6">
       <div className="w-full max-w-md">
-        <div className="text-center mb-10">
-          <h1 className="text-4xl font-bold text-stone-800 mb-2">Arbor</h1>
-          <p className="text-stone-500 text-sm">Team alignment, made visible.</p>
-        </div>
 
-        {mode === 'choose' && (
-          <div className="flex flex-col gap-3">
-            <button
-              onClick={() => setMode('create')}
-              className="w-full bg-green-700 text-white rounded-xl py-4 text-lg font-medium hover:bg-green-800 transition"
-            >
-              Create a team
-            </button>
-            <button
-              onClick={() => setMode('join')}
-              className="w-full border-2 border-green-700 text-green-700 rounded-xl py-4 text-lg font-medium hover:bg-green-50 transition"
-            >
-              Join a team
-            </button>
-          </div>
+        {mode === 'home' && (
+          <>
+            <div className="text-center mb-10">
+              <div className="flex justify-center mb-3">
+                <ArborLogo size={56} />
+              </div>
+              <h1 className="text-4xl font-bold text-stone-800 mb-2">Arbor</h1>
+              <p className="text-stone-500 text-sm mb-6">Team alignment, made visible.</p>
+
+              <div className="bg-white rounded-2xl border border-stone-100 shadow-sm p-5 text-left mb-8">
+                <p className="text-sm text-stone-600 leading-relaxed">
+                  Most team breakdowns aren't about bad attitudes — they're about structure. People start work without ever making their assumptions explicit: what success means, who owns what, how decisions get made.
+                </p>
+                <p className="text-sm text-stone-600 leading-relaxed mt-3">
+                  Arbor is grounded in <span className="font-medium text-stone-800">Activity Theory</span>, which treats collaboration as a system — goals, roles, rules, tools, and community — not just a collection of individuals. Before you start working, Arbor makes that system visible, so you can align on it rather than discover its gaps later.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={() => setMode('create')}
+                className="w-full bg-green-700 text-white rounded-xl py-4 text-lg font-medium hover:bg-green-800 transition"
+              >
+                Create a team
+              </button>
+              <button
+                onClick={() => setMode('join')}
+                className="w-full border-2 border-green-700 text-green-700 rounded-xl py-4 text-lg font-medium hover:bg-green-50 transition"
+              >
+                Join a team
+              </button>
+            </div>
+          </>
         )}
 
         {mode === 'create' && (
           <div className="flex flex-col gap-4">
-            <h2 className="text-xl font-semibold text-stone-700">Create a team</h2>
+            <div className="flex items-center gap-3 mb-2">
+              <ArborLogo size={32} />
+              <h2 className="text-xl font-semibold text-stone-700">Create a team</h2>
+            </div>
             <input
               className="border border-stone-300 rounded-lg px-4 py-3 text-stone-800 focus:outline-none focus:ring-2 focus:ring-green-600"
               placeholder="Team name (e.g. CS446 Group 3)"
@@ -113,7 +132,7 @@ export default function LandingPage() {
             >
               {loading ? 'Creating…' : 'Create team'}
             </button>
-            <button onClick={() => { setMode('choose'); setError('') }} className="text-stone-400 text-sm text-center hover:underline">
+            <button onClick={() => { setMode('home'); setError('') }} className="text-stone-400 text-sm text-center hover:underline">
               Back
             </button>
           </div>
@@ -121,7 +140,10 @@ export default function LandingPage() {
 
         {mode === 'join' && (
           <div className="flex flex-col gap-4">
-            <h2 className="text-xl font-semibold text-stone-700">Join a team</h2>
+            <div className="flex items-center gap-3 mb-2">
+              <ArborLogo size={32} />
+              <h2 className="text-xl font-semibold text-stone-700">Join a team</h2>
+            </div>
             <input
               className="border border-stone-300 rounded-lg px-4 py-3 text-stone-800 uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-green-600"
               placeholder="Team code (e.g. AB3XYZ)"
@@ -143,11 +165,12 @@ export default function LandingPage() {
             >
               {loading ? 'Joining…' : 'Join team'}
             </button>
-            <button onClick={() => { setMode('choose'); setError('') }} className="text-stone-400 text-sm text-center hover:underline">
+            <button onClick={() => { setMode('home'); setError('') }} className="text-stone-400 text-sm text-center hover:underline">
               Back
             </button>
           </div>
         )}
+
       </div>
     </main>
   )

@@ -1,0 +1,125 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { useParams, useRouter } from 'next/navigation'
+import { loadMember } from '@/lib/member-store'
+import { ArborLogo } from '@/components/ArborLogo'
+
+interface Member {
+  id: string
+  display_name: string
+}
+
+export default function LobbyPage() {
+  const { code } = useParams<{ code: string }>()
+  const router = useRouter()
+  const identity = loadMember()
+
+  const [teamName, setTeamName] = useState('')
+  const [members, setMembers] = useState<Member[]>([])
+  const [copied, setCopied] = useState(false)
+
+  useEffect(() => {
+    if (!identity) { router.replace('/'); return }
+    const poll = async () => {
+      const res = await fetch(`/api/teams/${code.toUpperCase()}`)
+      if (!res.ok) return
+      const data = await res.json()
+      setTeamName(data.name)
+      setMembers(data.members)
+    }
+    poll()
+    const interval = setInterval(poll, 4000)
+    return () => clearInterval(interval)
+  }, [code, identity, router])
+
+  function copyCode() {
+    navigator.clipboard.writeText(code.toUpperCase())
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  function handleStart() {
+    router.push(`/${code}/reflect`)
+  }
+
+  const isCreator = members[0]?.id === identity?.memberId
+
+  return (
+    <main className="min-h-screen bg-stone-50 flex items-center justify-center p-6">
+      <div className="w-full max-w-md">
+        <div className="text-center mb-8">
+          <div className="flex justify-center mb-3">
+            <ArborLogo size={48} />
+          </div>
+          <h1 className="text-2xl font-bold text-stone-800">{teamName}</h1>
+          <p className="text-stone-500 text-sm mt-1">Team lobby</p>
+        </div>
+
+        {/* Join code */}
+        <div className="bg-white rounded-2xl border border-stone-100 shadow-sm p-5 mb-5">
+          <p className="text-xs text-stone-400 uppercase tracking-wide font-medium mb-2">Team code — share this</p>
+          <div className="flex items-center gap-3">
+            <span className="text-3xl font-mono font-bold tracking-widest text-green-700 flex-1">
+              {code.toUpperCase()}
+            </span>
+            <button
+              onClick={copyCode}
+              className="text-sm px-3 py-1.5 border border-stone-200 rounded-lg text-stone-600 hover:bg-stone-50 transition"
+            >
+              {copied ? 'Copied!' : 'Copy'}
+            </button>
+          </div>
+          <p className="text-xs text-stone-400 mt-3">
+            Your teammate goes to <span className="font-medium">arbor-eight.vercel.app</span> → Join a team → enters this code
+          </p>
+        </div>
+
+        {/* What's about to happen */}
+        <div className="bg-green-50 rounded-2xl border border-green-100 p-5 mb-5">
+          <p className="text-xs text-green-700 uppercase tracking-wide font-semibold mb-3">What happens next</p>
+          <ol className="text-sm text-green-900 space-y-2">
+            <li className="flex gap-2"><span className="font-bold">1.</span> Each of you reflects individually on 6 areas of your collaboration — privately, on your own screen.</li>
+            <li className="flex gap-2"><span className="font-bold">2.</span> Your answers are revealed side-by-side, and AI highlights where you align or diverge.</li>
+            <li className="flex gap-2"><span className="font-bold">3.</span> You discuss and write a group agreement for each area — everyone approves it.</li>
+            <li className="flex gap-2"><span className="font-bold">4.</span> Two check-in cycles surface tension as it builds, visualised as a plant.</li>
+          </ol>
+        </div>
+
+        {/* Members */}
+        <div className="bg-white rounded-2xl border border-stone-100 shadow-sm p-5 mb-5">
+          <p className="text-xs text-stone-400 uppercase tracking-wide font-medium mb-3">
+            Who's here ({members.length})
+          </p>
+          <div className="flex flex-col gap-2">
+            {members.map(m => (
+              <div key={m.id} className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-semibold text-sm">
+                  {m.display_name[0].toUpperCase()}
+                </div>
+                <span className="text-stone-700 text-sm font-medium">{m.display_name}</span>
+                {m.id === identity?.memberId && (
+                  <span className="text-xs text-stone-400">(you)</span>
+                )}
+              </div>
+            ))}
+            {members.length < 2 && (
+              <p className="text-xs text-stone-400 italic mt-1">Waiting for teammates to join…</p>
+            )}
+          </div>
+        </div>
+
+        <button
+          onClick={handleStart}
+          disabled={members.length < 2}
+          className="w-full bg-green-700 text-white rounded-xl py-4 text-lg font-medium hover:bg-green-800 disabled:opacity-40 transition"
+        >
+          {members.length < 2 ? 'Waiting for teammates…' : 'Start reflecting →'}
+        </button>
+        {members.length >= 2 && (
+          <p className="text-xs text-stone-400 text-center mt-2">Each person taps this on their own device</p>
+        )}
+      </div>
+    </main>
+  )
+}

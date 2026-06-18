@@ -45,7 +45,7 @@ export default function TeamHub() {
         if (!memberExists) { setNotMember(true); return }
 
         const phase = data.status.phase
-        if (phase === 'REFLECTING') router.push(`/${code}/reflect`)
+        if (phase === 'REFLECTING') router.push(`/${code}/lobby`)
         else if (phase === 'REVEAL') router.push(`/${code}/reveal`)
         else if (phase === 'AGREEING') router.push(`/${code}/agree`)
         else if (phase === 'CHECKIN_1') router.push(`/${code}/checkin/1`)

@@ -10,84 +10,141 @@ export const CHAT_COMPONENTS = [
 export type ChatComponent = (typeof CHAT_COMPONENTS)[number]
 
 export const COMPONENT_LABELS: Record<ChatComponent, string> = {
-  object: 'Object',
-  subject: 'Subject',
-  division_of_labor: 'Division of Labor',
-  rules: 'Rules',
-  tools: 'Tools',
-  community: 'Community',
+  object: 'Define Success',
+  subject: 'Your Role & Goals',
+  division_of_labor: 'Contribution Structure',
+  rules: 'How We Work Together',
+  tools: 'Tools & Platforms',
+  community: 'Who\'s Involved',
 }
 
 export const COMPONENT_DESCRIPTIONS: Record<ChatComponent, string> = {
-  object: 'The shared goal — what success looks like for this project',
-  subject: 'What each person wants to get out of doing this',
-  division_of_labor: 'Who does what, and what fair contribution looks like',
-  rules: 'How the team communicates, meets, decides, and maintains quality',
-  tools: 'Platforms and tools the team will use',
-  community: 'Who is part of this project\'s ecosystem and who has a say',
+  object: 'What does success look like — and does your team agree?',
+  subject: 'What each person wants to get out of this, and the role they want to play',
+  division_of_labor: 'Who owns what, and what fair contribution looks like to each person',
+  rules: 'How the team communicates, meets, decides, and holds quality',
+  tools: 'The platforms and tools everyone will actually use',
+  community: 'Who has a say in this project, and who doesn\'t',
 }
 
-export const REFLECTION_QUESTIONS: Record<ChatComponent, { id: string; question: string; type: 'text' | 'multiselect'; options?: string[] }[]> = {
+export const REFLECTION_QUESTIONS: Record<ChatComponent, { id: string; question: string; type: 'text' | 'multiselect' | 'choice'; options?: string[] }[]> = {
   object: [
-    { id: 'success_vision', question: 'What does a successful outcome look like to you, specifically?', type: 'text' },
-    { id: 'must_achieve', question: 'If you had to pick one thing this project must achieve for you to call it a success, what is it?', type: 'text' },
+    {
+      id: 'success_definition',
+      question: 'What would make this project a clear success for you?',
+      type: 'text',
+    },
+    {
+      id: 'priority',
+      question: 'If you had to protect one thing above all else in this project, what would it be?',
+      type: 'choice',
+      options: ['The quality of the final output', 'Meeting the deadline', 'Learning something new', 'A fair and smooth team experience', 'Other'],
+    },
   ],
   subject: [
-    { id: 'personal_goal', question: 'What do you want to get out of doing this project — beyond the grade/deliverable?', type: 'text' },
-    { id: 'contributor_style', question: 'What kind of contributor are you in group work — and is that the role you want this time?', type: 'text' },
+    {
+      id: 'personal_goal',
+      question: 'What do you want to get out of this project, beyond the deliverable?',
+      type: 'text',
+    },
+    {
+      id: 'preferred_role',
+      question: 'What kind of contributor do you naturally tend to be in group work?',
+      type: 'choice',
+      options: ['I take the lead and coordinate', 'I focus on executing my part well', 'I move between tasks as needed', 'I keep the group accountable', 'Other'],
+    },
   ],
   division_of_labor: [
-    { id: 'expected_role', question: 'What role do you expect or want to take on?', type: 'text' },
-    { id: 'fair_workload', question: 'What does a fair workload distribution look like to you?', type: 'text' },
-    { id: 'ownership', question: 'Is there anything you strongly want to own, or strongly want to avoid?', type: 'text' },
+    {
+      id: 'expected_role',
+      question: 'What part of the work do you expect or want to own?',
+      type: 'text',
+    },
+    {
+      id: 'fair_split',
+      question: 'What does a fair workload split look like to you?',
+      type: 'choice',
+      options: ['Equal hours from everyone', 'Weighted by skills and strengths', 'Flexible — whoever has capacity does more', 'Agreed role-based division', 'Other'],
+    },
+    {
+      id: 'avoid',
+      question: 'Is there anything you strongly want to avoid taking on?',
+      type: 'text',
+    },
   ],
   rules: [
-    { id: 'communication', question: 'Communication: where, and what response time is reasonable?', type: 'text' },
-    { id: 'meetings', question: 'Meetings: how often, and what counts as showing up prepared?', type: 'text' },
-    { id: 'decisions', question: 'Decision-making: consensus, majority, or role-based — and how should conflict be resolved?', type: 'text' },
-    { id: 'quality', question: 'Work quality: what\'s your bar for "good enough" vs. "not acceptable"?', type: 'text' },
+    {
+      id: 'communication',
+      question: 'Where should the team communicate, and what\'s a reasonable response time?',
+      type: 'text',
+    },
+    {
+      id: 'meetings',
+      question: 'How often should you meet, and what does showing up prepared mean?',
+      type: 'text',
+    },
+    {
+      id: 'decisions',
+      question: 'How should the team make decisions when there\'s disagreement?',
+      type: 'choice',
+      options: ['Consensus — everyone must agree', 'Majority vote', 'Whoever owns that area decides', 'One person has final say', 'Other'],
+    },
+    {
+      id: 'quality',
+      question: 'What\'s your bar for work quality?',
+      type: 'choice',
+      options: ['Excellent — I\'d be embarrassed by anything less', 'Good enough to meet the brief', 'Functional — done is better than perfect', 'Depends on the task', 'Other'],
+    },
   ],
   tools: [
-    { id: 'expected_tools', question: 'What tools/platforms do you expect to use for this project?', type: 'text' },
-    { id: 'personal_tools', question: 'Is there a tool you rely on that others might not be using?', type: 'text' },
+    {
+      id: 'expected_tools',
+      question: 'What tools or platforms do you expect the team to use?',
+      type: 'text',
+    },
+    {
+      id: 'personal_tools',
+      question: 'Is there a tool you rely on that others might not be familiar with?',
+      type: 'text',
+    },
   ],
   community: [
     {
-      id: 'ecosystem',
+      id: 'stakeholders',
       question: 'Who do you consider part of this project\'s ecosystem?',
       type: 'multiselect',
       options: ['Group members', 'Instructor', 'TA', 'Client or external stakeholder', 'Other'],
     },
     {
-      id: 'no_say',
-      question: 'Who do you think has no real say in how the group operates?',
-      type: 'multiselect',
-      options: ['Instructor', 'TA', 'Client or external stakeholder', 'A specific group member', 'Nobody outside the group', 'Other'],
+      id: 'influence',
+      question: 'Who should have a say in how the group actually operates day-to-day?',
+      type: 'choice',
+      options: ['Only group members', 'Group members + instructor', 'Group members + client/stakeholder', 'Everyone listed above', 'Other'],
     },
   ],
 }
 
 export const CHECKIN_QUESTIONS: Record<ChatComponent, { id: string; question: string; hasRating: boolean }[]> = {
   object: [
-    { id: 'shared_outcome', question: 'Do you still feel like the group is working toward the same outcome you agreed on?', hasRating: true },
+    { id: 'shared_outcome', question: 'Is the group still working toward the outcome you agreed on?', hasRating: true },
   ],
   subject: [
-    { id: 'role_satisfaction', question: 'Are you getting the kind of role/contribution you wanted out of this?', hasRating: true },
+    { id: 'role_satisfaction', question: 'Are you getting the kind of role and contribution you wanted?', hasRating: true },
   ],
   division_of_labor: [
     { id: 'workload_fair', question: 'Does the current workload feel fair, given what was agreed?', hasRating: true },
-    { id: 'unexpected_work', question: 'Is there anything you\'ve ended up doing that wasn\'t part of your expected role?', hasRating: false },
+    { id: 'unexpected_work', question: 'Has anything fallen on you that wasn\'t part of your expected role?', hasRating: false },
   ],
   rules: [
-    { id: 'communication_match', question: 'Has communication matched what was agreed?', hasRating: true },
+    { id: 'communication_match', question: 'Has communication matched what you agreed?', hasRating: true },
     { id: 'meetings_match', question: 'Have meetings happened the way you expected?', hasRating: true },
-    { id: 'decision_handling', question: 'Has a decision or disagreement come up — if so, was it handled the way you agreed?', hasRating: false },
+    { id: 'decision_handling', question: 'If a disagreement came up, was it handled the way you agreed?', hasRating: false },
   ],
   tools: [
-    { id: 'tools_used', question: 'Has everyone been using the tools you agreed on, or has something shifted?', hasRating: true },
+    { id: 'tools_used', question: 'Has everyone been using the tools you agreed on?', hasRating: true },
   ],
   community: [
-    { id: 'outside_influence', question: 'Has anyone outside the group started influencing decisions in a way that wasn\'t expected?', hasRating: true },
+    { id: 'outside_influence', question: 'Has anyone outside the group been influencing decisions in a way that wasn\'t expected?', hasRating: true },
   ],
 }
 

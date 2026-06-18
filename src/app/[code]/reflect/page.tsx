@@ -3,8 +3,9 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { loadMember } from '@/lib/member-store'
-import { CHAT_COMPONENTS, COMPONENT_LABELS, REFLECTION_QUESTIONS, ChatComponent } from '@/lib/chat-components'
+import { CHAT_COMPONENTS, COMPONENT_LABELS, COMPONENT_DESCRIPTIONS, REFLECTION_QUESTIONS, ChatComponent } from '@/lib/chat-components'
 import { WaitingRoom } from '@/components/WaitingRoom'
+import { ArborLogo } from '@/components/ArborLogo'
 
 type Responses = Record<ChatComponent, Record<string, string | string[]>>
 
@@ -17,14 +18,10 @@ export default function ReflectPage() {
   const [currentIdx, setCurrentIdx] = useState(0)
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
-  const [teamSize, setTeamSize] = useState(2)
 
   useEffect(() => {
     if (!identity) { router.replace('/'); return }
-    fetch(`/api/teams/${code.toUpperCase()}`)
-      .then(r => r.json())
-      .then(d => setTeamSize(d.status?.teamSize ?? 2))
-  }, [code, identity, router])
+  }, [identity, router])
 
   const currentComponent = CHAT_COMPONENTS[currentIdx]
   const questions = REFLECTION_QUESTIONS[currentComponent]
@@ -47,6 +44,10 @@ export default function ReflectPage() {
     const compResponses = responses[currentComponent] ?? {}
     return questions.every(q => {
       if (q.type === 'multiselect') return ((compResponses[q.id] as string[]) ?? []).length > 0
+      if (q.type === 'choice') {
+        const val = compResponses[q.id] as string | undefined
+        return !!val
+      }
       return (compResponses[q.id] as string | undefined)?.trim()
     })
   }
@@ -84,24 +85,29 @@ export default function ReflectPage() {
   return (
     <main className="min-h-screen bg-stone-50 p-6 flex flex-col items-center">
       <div className="w-full max-w-xl">
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-xs text-stone-400 font-medium uppercase tracking-wide">
-              {currentIdx + 1} / {CHAT_COMPONENTS.length}
-            </span>
-            <span className="text-xs text-stone-400">Individual reflection</span>
-          </div>
-          <div className="w-full bg-stone-200 rounded-full h-1.5">
-            <div
-              className="bg-green-600 h-1.5 rounded-full transition-all"
-              style={{ width: `${((currentIdx + 1) / CHAT_COMPONENTS.length) * 100}%` }}
-            />
+        {/* Header */}
+        <div className="flex items-center gap-2 mb-6">
+          <ArborLogo size={28} />
+          <div className="flex-1">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs text-stone-400 font-medium uppercase tracking-wide">
+                {currentIdx + 1} of {CHAT_COMPONENTS.length} — Individual reflection
+              </span>
+            </div>
+            <div className="w-full bg-stone-200 rounded-full h-1.5">
+              <div
+                className="bg-green-600 h-1.5 rounded-full transition-all"
+                style={{ width: `${((currentIdx + 1) / CHAT_COMPONENTS.length) * 100}%` }}
+              />
+            </div>
           </div>
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-stone-100 p-6">
-          <h2 className="text-xl font-bold text-stone-800 mb-1">{COMPONENT_LABELS[currentComponent]}</h2>
-          <div className="flex flex-col gap-5 mt-4">
+          <h2 className="text-xl font-bold text-stone-800 mb-0.5">{COMPONENT_LABELS[currentComponent]}</h2>
+          <p className="text-xs text-stone-400 mb-5">{COMPONENT_DESCRIPTIONS[currentComponent]}</p>
+
+          <div className="flex flex-col gap-6">
             {questions.map(q => (
               <div key={q.id}>
                 <label className="block text-sm font-medium text-stone-700 mb-2">{q.question}</label>
@@ -116,17 +122,45 @@ export default function ReflectPage() {
                   />
                 )}
 
+                {q.type === 'choice' && q.options && (
+                  <div className="flex flex-col gap-2">
+                    {q.options.map(opt => {
+                      const selected = compResponses[q.id] === opt
+                      return (
+                        <label key={opt} className={`flex items-center gap-3 cursor-pointer border rounded-lg px-3 py-2.5 transition ${selected ? 'border-green-500 bg-green-50' : 'border-stone-200 hover:bg-stone-50'}`}>
+                          <input
+                            type="radio"
+                            name={`${currentComponent}-${q.id}`}
+                            checked={selected}
+                            onChange={() => setValue(currentComponent, q.id, opt)}
+                            className="accent-green-600"
+                          />
+                          <span className="text-sm text-stone-700">{opt}</span>
+                        </label>
+                      )
+                    })}
+                    {compResponses[q.id] === 'Other' && (
+                      <input
+                        className="border border-stone-200 rounded-lg px-3 py-2 text-sm mt-1 focus:outline-none focus:ring-1 focus:ring-green-500"
+                        placeholder="Please specify…"
+                        value={(compResponses[`${q.id}_other`] as string) ?? ''}
+                        onChange={e => setValue(currentComponent, `${q.id}_other`, e.target.value)}
+                      />
+                    )}
+                  </div>
+                )}
+
                 {q.type === 'multiselect' && q.options && (
                   <div className="flex flex-col gap-2">
                     {q.options.map(opt => {
                       const selected = ((compResponses[q.id] as string[]) ?? []).includes(opt)
                       return (
-                        <label key={opt} className="flex items-center gap-3 cursor-pointer">
+                        <label key={opt} className={`flex items-center gap-3 cursor-pointer border rounded-lg px-3 py-2.5 transition ${selected ? 'border-green-500 bg-green-50' : 'border-stone-200 hover:bg-stone-50'}`}>
                           <input
                             type="checkbox"
                             checked={selected}
                             onChange={() => toggleMultiselect(currentComponent, q.id, opt)}
-                            className="w-4 h-4 accent-green-600"
+                            className="accent-green-600"
                           />
                           <span className="text-sm text-stone-700">{opt}</span>
                           {opt === 'Other' && selected && (
