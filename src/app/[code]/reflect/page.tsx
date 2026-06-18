@@ -55,7 +55,8 @@ export default function ReflectPage() {
 
   function setPriorityLevel(questionId: string, option: string, level: string) {
     const current = (responses[currentComponent]?.[questionId] as Record<string, string>) ?? {}
-    setValue(currentComponent, questionId, { ...current, [option]: level })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    setValue(currentComponent, questionId, { ...current, [option]: level } as any)
   }
 
   async function handleSubmit() {
