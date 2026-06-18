@@ -69,8 +69,13 @@ export default function AgreePage() {
   useEffect(() => {
     const ag = agreements[activeComponent]
     setEditText(ag?.final_text ?? '')
-    setResolutionNote(ag?.resolution_note ?? '')
-  }, [activeComponent, agreements])
+    setResolutionNote(n => n || ag?.resolution_note || '')
+  }, [activeComponent])
+
+  useEffect(() => {
+    const ag = agreements[activeComponent]
+    setEditText(ag?.final_text ?? '')
+  }, [agreements, activeComponent])
 
   // Check if all 6 components are fully approved
   useEffect(() => {
