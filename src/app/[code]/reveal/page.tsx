@@ -20,8 +20,8 @@ interface RevealAI {
 export default function RevealPage() {
   const { code } = useParams<{ code: string }>()
   const router = useRouter()
-  const identity = loadMember()
 
+  const [identity] = useState(() => loadMember())
   const [reflections, setReflections] = useState<Reflection[]>([])
   const [members, setMembers] = useState<string[]>([])
   const [teamId, setTeamId] = useState('')
