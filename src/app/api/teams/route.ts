@@ -34,8 +34,37 @@ export async function POST(req: Request) {
 
 export async function PATCH(req: Request) {
   try {
-    const { teamId, projectTitle, deadline, assignmentBrief } = await req.json()
+    const { teamId, projectTitle, deadline, assignmentBrief, plantVote } = await req.json()
     if (!teamId) return NextResponse.json({ error: 'teamId required' }, { status: 400 })
+
+    if (plantVote) {
+      const { memberId, plantType } = plantVote as { memberId: string; plantType: string }
+
+      // Load current votes
+      const team = await queryOne<{ plant_votes: Record<string, string> | null }>(
+        'SELECT plant_votes FROM teams WHERE id = $1', [teamId]
+      )
+      const votes: Record<string, string> = { ...(team?.plant_votes ?? {}), [memberId]: plantType }
+
+      // Check if all members voted the same
+      const members = await query<{ id: string }>('SELECT id FROM members WHERE team_id = $1', [teamId])
+      const allVoted = members.every(m => votes[m.id])
+      const agreed = allVoted && new Set(Object.values(votes)).size === 1
+
+      if (agreed) {
+        await query(
+          'UPDATE teams SET plant_votes = $1, plant_type = $2 WHERE id = $3',
+          [JSON.stringify(votes), plantType, teamId]
+        )
+      } else {
+        await query(
+          'UPDATE teams SET plant_votes = $1 WHERE id = $2',
+          [JSON.stringify(votes), teamId]
+        )
+      }
+
+      return NextResponse.json({ ok: true, agreed, votes, plantType: agreed ? plantType : null })
+    }
 
     await query(
       `UPDATE teams SET

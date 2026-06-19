@@ -3,225 +3,309 @@
 import { useEffect, useState } from 'react'
 
 export type PlantState = 'thriving' | 'doing_okay' | 'wilting' | 'dead'
+export type PlantType = 'default' | 'cactus' | 'flower' | 'tree'
 
 interface Props {
   state: PlantState
+  plantType?: PlantType
   onClick?: () => void
   size?: number
+  hideLabel?: boolean
 }
 
-// GBA Harvest Moon pixel art plant — 64×96 viewBox, 4px per pixel
 type Rect = [number, number, number, number, string] // x, y, w, h, fill
 
 const C = {
-  lD:  '#1A3C08', // leaf dark
-  lM:  '#3A6C18', // leaf mid
-  lB:  '#5EA030', // leaf bright
-  lL:  '#84C848', // leaf light
-  lH:  '#A8DC68', // leaf highlight
-  fl:  '#F8CC28', // flower yellow
-  fo:  '#F47820', // flower orange
-  wD:  '#4A4A10', // wilt dark
-  wM:  '#787828', // wilt mid
-  wL:  '#A8A840', // wilt light
-  dD:  '#3A2408', // dead dark
-  dM:  '#5A3C18', // dead mid
-  dL:  '#887040', // dead light/grey
-  sD:  '#3A2008', // stem dark
-  sM:  '#6A3C18', // stem mid
-  sL:  '#8A5428', // stem light
-  soD: '#3A1C08', // soil dark
-  soM: '#5A3418', // soil mid
-  pD:  '#782818', // pot dark (terracotta)
-  pM:  '#A83C28', // pot mid
-  pL:  '#CC5838', // pot light
-  pH:  '#DC7050', // pot highlight
+  // Pot & soil
+  soD:'#3A1C08', soM:'#5A3418',
+  pD:'#782818', pM:'#A83C28', pL:'#CC5838', pH:'#DC7050',
+  // Default leafy
+  lD:'#1A3C08', lM:'#3A6C18', lB:'#5EA030', lL:'#84C848', lH:'#A8DC68',
+  fl:'#F8CC28', fo:'#F47820',
+  wD:'#4A4A10', wM:'#787828', wL:'#A8A840',
+  dD:'#3A2408', dM:'#5A3C18', dL:'#887040',
+  sD:'#3A2008', sM:'#6A3C18', sL:'#8A5428',
+  // Cactus
+  caD:'#14532d', caM:'#166534', caB:'#16a34a', caL:'#4ade80',
+  caWD:'#365314', caWM:'#4d7c0f', caWL:'#84cc16',
+  caKD:'#57534e', caKM:'#78716c', caKL:'#a8a29e',
+  caFP:'#f97316', caFY:'#fbbf24',
+  // Flower
+  fsD:'#14532d', fsM:'#166534', fsL:'#4ade80',
+  fpD:'#be123c', fpM:'#e11d48', fpL:'#fda4af',
+  fcY:'#fbbf24', fcO:'#f97316',
+  fwD:'#9f1239', fwM:'#be123c',
+  // Tree
+  ttD:'#78350f', ttM:'#92400e', ttL:'#b45309',
+  tcD:'#14532d', tcM:'#166534', tcB:'#15803d', tcL:'#16a34a', tcH:'#22c55e',
+  twD:'#713f12', twM:'#a16207', twL:'#ca8a04', twY:'#eab308',
+  tkD:'#44403c', tkM:'#78716c',
 }
 
-// Shared pot (rows y=56–88): terracotta with highlight
 const pot: Rect[] = [
-  // Soil
-  [12, 52, 40, 4, C.soD],
-  [14, 56, 36, 4, C.soM],
-  // Pot rim
-  [8,  60, 48, 4, C.pM],
-  [8,  60, 16, 4, C.pH], // rim highlight left
-  // Pot body
-  [12, 64, 40, 4, C.pM],
-  [12, 68, 40, 4, C.pM],
-  [12, 64, 4,  8, C.pH], // body highlight
-  // Pot lower body (slightly darker)
-  [12, 72, 40, 4, C.pD],
-  [14, 72, 4,  4, C.pL], // lower highlight
-  // Pot base
-  [18, 76, 28, 4, C.pD],
-  [20, 76, 6,  4, C.pM], // base highlight
-  // Bottom foot
-  [22, 80, 20, 4, C.pD],
+  [12,52,40,4,C.soD],[14,56,36,4,C.soM],
+  [8,60,48,4,C.pM],[8,60,16,4,C.pH],
+  [12,64,40,4,C.pM],[12,68,40,4,C.pM],[12,64,4,8,C.pH],
+  [12,72,40,4,C.pD],[14,72,4,4,C.pL],
+  [18,76,28,4,C.pD],[20,76,6,4,C.pM],
+  [22,80,20,4,C.pD],
 ]
 
-// Stem helper — center at x=28–36, from topY to 52
-function makeStem(topY: number): Rect[] {
-  const rects: Rect[] = []
-  for (let y = topY; y < 52; y += 4) {
-    rects.push([28, y, 8, 4, C.sD])
-    rects.push([28, y, 4, 4, C.sM])
-    rects.push([28, y, 2, 4, C.sL])
-  }
-  return rects
+function stem(topY: number): Rect[] {
+  const r: Rect[] = []
+  for (let y = topY; y < 52; y += 4)
+    r.push([28,y,8,4,C.sD],[28,y,4,4,C.sM],[28,y,2,4,C.sL])
+  return r
 }
 
-// ── THRIVING ── big lush round bush with flowers
-const thrivingRects: Rect[] = [
-  // Canopy outline
-  [20,  4, 24, 4, C.lD],
-  [12,  8,  8, 4, C.lD],
-  [44,  8,  8, 4, C.lD],
-  [ 8, 12,  4,20, C.lD],
-  [52, 12,  4,20, C.lD],
-  [12, 32,  8, 4, C.lD],
-  [44, 32,  8, 4, C.lD],
-  [20, 36, 24, 4, C.lD],
-  // Mid green fill
-  [20,  8, 24, 4, C.lM],
-  [12, 12, 40,20, C.lM],
-  [16, 32, 32, 4, C.lM],
-  // Bright patches
-  [24,  8, 16, 8, C.lB],
-  [12, 16, 12, 8, C.lB],
-  [40, 12, 12,12, C.lB],
-  [20, 28, 16, 4, C.lB],
-  [36, 24,  8, 4, C.lB],
-  // Light patches
-  [28,  8,  8, 4, C.lL],
-  [12, 16,  4, 4, C.lL],
-  [44, 12,  4, 4, C.lL],
-  [24, 28,  8, 4, C.lL],
-  // Highlights
-  [32,  8,  4, 4, C.lH],
-  [16, 20,  4, 4, C.lH],
-  [44, 20,  4, 4, C.lH],
-  // Flowers (yellow + orange)
-  [16, 12,  4, 4, C.fl],
-  [44, 28,  4, 4, C.fl],
-  [40,  8,  4, 4, C.fo],
-  [28, 32,  4, 4, C.fo],
-  [12, 24,  4, 4, C.fl],
-  // Stem (short)
-  ...makeStem(40),
-  ...pot,
-]
+function flStem(topY: number): Rect[] {
+  const r: Rect[] = []
+  for (let y = topY; y < 52; y += 4)
+    r.push([28,y,8,4,C.fsD],[28,y,4,4,C.fsM],[28,y,2,4,C.fsL])
+  return r
+}
 
-// ── DOING OKAY ── medium plant, 2 clusters
-const doingOkayRects: Rect[] = [
-  // Main cluster (center-top)
-  [20, 8,  24, 4, C.lD],
-  [16, 12,  4, 4, C.lD],
-  [44, 12,  4, 4, C.lD],
-  [12, 16,  4,12, C.lD],
-  [48, 16,  4,12, C.lD],
-  [16, 28,  4, 4, C.lD],
-  [44, 28,  4, 4, C.lD],
-  [20, 32, 24, 4, C.lD],
-  // Fill
-  [20, 12, 24,16, C.lM],
-  [16, 16,  4,12, C.lM],
-  [44, 16,  4,12, C.lM],
-  // Bright
-  [24, 12, 12, 8, C.lB],
-  [36, 16,  8, 8, C.lB],
-  [20, 24,  8, 4, C.lB],
-  // Light
-  [28, 12,  4, 4, C.lL],
-  [40, 16,  4, 4, C.lL],
-  // Left side cluster
-  [ 8, 20,  8, 8, C.lD],
-  [12, 20,  4, 8, C.lM],
-  [ 8, 20,  4, 4, C.lB],
-  // Right side cluster
-  [48, 20,  8, 8, C.lD],
-  [48, 20,  4, 8, C.lM],
-  [52, 20,  4, 4, C.lB],
-  // Stem (medium)
-  ...makeStem(36),
-  ...pot,
-]
+// ── DEFAULT ──────────────────────────────────────────────────────────────────
+const DEFAULT: Record<PlantState, Rect[]> = {
+  thriving: [
+    [20,4,24,4,C.lD],[12,8,8,4,C.lD],[44,8,8,4,C.lD],[8,12,4,20,C.lD],[52,12,4,20,C.lD],
+    [12,32,8,4,C.lD],[44,32,8,4,C.lD],[20,36,24,4,C.lD],
+    [20,8,24,4,C.lM],[12,12,40,20,C.lM],[16,32,32,4,C.lM],
+    [24,8,16,8,C.lB],[12,16,12,8,C.lB],[40,12,12,12,C.lB],[20,28,16,4,C.lB],[36,24,8,4,C.lB],
+    [28,8,8,4,C.lL],[12,16,4,4,C.lL],[44,12,4,4,C.lL],[24,28,8,4,C.lL],
+    [32,8,4,4,C.lH],[16,20,4,4,C.lH],[44,20,4,4,C.lH],
+    [16,12,4,4,C.fl],[44,28,4,4,C.fl],[40,8,4,4,C.fo],[28,32,4,4,C.fo],[12,24,4,4,C.fl],
+    ...stem(40),...pot,
+  ],
+  doing_okay: [
+    [20,8,24,4,C.lD],[16,12,4,4,C.lD],[44,12,4,4,C.lD],[12,16,4,12,C.lD],[48,16,4,12,C.lD],
+    [16,28,4,4,C.lD],[44,28,4,4,C.lD],[20,32,24,4,C.lD],
+    [20,12,24,16,C.lM],[16,16,4,12,C.lM],[44,16,4,12,C.lM],
+    [24,12,12,8,C.lB],[36,16,8,8,C.lB],[20,24,8,4,C.lB],[28,12,4,4,C.lL],[40,16,4,4,C.lL],
+    [8,20,8,8,C.lD],[12,20,4,8,C.lM],[8,20,4,4,C.lB],
+    [48,20,8,8,C.lD],[48,20,4,8,C.lM],[52,20,4,4,C.lB],
+    ...stem(36),...pot,
+  ],
+  wilting: [
+    [24,16,16,4,C.wD],[24,20,16,4,C.wM],[28,16,8,4,C.wL],
+    [16,24,8,4,C.wD],[12,28,8,4,C.wM],[8,32,8,4,C.wM],[8,36,4,4,C.wL],[12,36,4,4,C.wD],[20,24,4,8,C.wM],
+    [40,24,8,4,C.wD],[44,28,8,4,C.wM],[48,32,8,4,C.wM],[52,36,4,4,C.wL],[44,36,4,4,C.wD],[40,24,4,8,C.wM],
+    ...stem(24),...pot,
+  ],
+  dead: [
+    [32,12,4,4,C.dD],[36,16,4,4,C.dM],[36,20,4,4,C.dD],
+    [36,24,8,4,C.dD],[40,28,4,4,C.dM],[36,28,4,4,C.dL],
+    [24,20,4,4,C.dD],[20,24,4,4,C.dM],
+    [12,28,8,4,C.dD],[12,32,4,4,C.dM],[16,32,4,4,C.dL],
+    ...stem(16),...pot,
+  ],
+}
 
-// ── WILTING ── droopy olive-green leaves, exposed stem
-const wiltingRects: Rect[] = [
-  // Small center tuft (top)
-  [24, 16, 16, 4, C.wD],
-  [24, 20, 16, 4, C.wM],
-  [28, 16,  8, 4, C.wL],
-  // Left drooping leaf — curves down-left
-  [16, 24,  8, 4, C.wD],
-  [12, 28,  8, 4, C.wM],
-  [ 8, 32,  8, 4, C.wM],
-  [ 8, 36,  4, 4, C.wL],
-  [12, 36,  4, 4, C.wD],
-  [20, 24,  4, 8, C.wM],
-  // Right drooping leaf — curves down-right
-  [40, 24,  8, 4, C.wD],
-  [44, 28,  8, 4, C.wM],
-  [48, 32,  8, 4, C.wM],
-  [52, 36,  4, 4, C.wL],
-  [44, 36,  4, 4, C.wD],
-  [40, 24,  4, 8, C.wM],
-  // Stem (tall, exposed)
-  ...makeStem(24),
-  ...pot,
-]
+// ── CACTUS ───────────────────────────────────────────────────────────────────
+const CACTUS: Record<PlantState, Rect[]> = {
+  thriving: [
+    // Main column
+    [24,16,16,36,C.caM],[24,16,4,36,C.caB],[36,20,4,28,C.caD],
+    // Left arm: horizontal then vertical up
+    [8,36,16,8,C.caM],[8,36,4,8,C.caB],[8,20,8,16,C.caM],[8,20,4,16,C.caB],[16,24,4,8,C.caD],
+    // Right arm
+    [40,40,16,8,C.caM],[52,40,4,8,C.caD],[48,28,8,12,C.caM],[52,28,4,12,C.caD],
+    // Spine highlights
+    [20,24,4,4,C.caL],[20,36,4,4,C.caL],[20,44,4,4,C.caL],
+    [40,20,4,4,C.caL],[40,32,4,4,C.caL],
+    [4,28,4,4,C.caL],[4,36,4,4,C.caL],[44,44,4,4,C.caL],
+    // Flowers: top of main column
+    [24,8,16,8,C.caFP],[28,4,8,8,C.caFY],[28,8,4,4,C.caFY],
+    [24,8,4,4,C.caFP],[36,8,4,4,C.caFP],
+    // Left arm tip flower
+    [4,12,8,8,C.caFP],[8,12,4,4,C.caFY],
+    // Right arm tip flower
+    [52,20,8,8,C.caFP],[52,24,4,4,C.caFY],
+    ...pot,
+  ],
+  doing_okay: [
+    // Shorter main column
+    [24,24,16,28,C.caM],[24,24,4,28,C.caB],[36,28,4,20,C.caD],
+    // One left arm
+    [8,40,16,8,C.caM],[8,40,4,8,C.caB],[8,28,8,12,C.caM],[8,28,4,12,C.caB],[16,32,4,8,C.caD],
+    // Spine highlights
+    [20,32,4,4,C.caL],[20,40,4,4,C.caL],[40,28,4,4,C.caL],[4,32,4,4,C.caL],
+    ...pot,
+  ],
+  wilting: [
+    // Thin, shorter, olive-toned column
+    [26,32,12,20,C.caWM],[26,32,4,20,C.caWL],[34,36,4,12,C.caWD],
+    // Sagging arm
+    [8,44,18,8,C.caWM],[8,44,4,8,C.caWL],[8,48,8,4,C.caWD],
+    // Pale spines
+    [22,36,4,4,C.caWL],[36,40,4,4,C.caWL],
+    ...pot,
+  ],
+  dead: [
+    // Gray-brown stick
+    [28,20,8,32,C.caKD],[28,20,4,32,C.caKM],[32,24,4,24,C.caKL],
+    // Dried stubs where arms were
+    [12,40,16,4,C.caKD],[44,44,12,4,C.caKD],
+    // Dried tip
+    [28,16,8,4,C.caKL],
+    ...pot,
+  ],
+}
 
-// ── DEAD ── bare stick, dried leaves, muted brown
-const deadRects: Rect[] = [
-  // Dead twig right (top)
-  [32, 12,  4, 4, C.dD],
-  [36, 16,  4, 4, C.dM],
-  [36, 16,  4, 4, C.dL],
-  [36, 20,  4, 4, C.dD],
-  // Dried leaf right — curled
-  [36, 24,  8, 4, C.dD],
-  [40, 28,  4, 4, C.dM],
-  [36, 28,  4, 4, C.dL],
-  // Dead twig left
-  [24, 20,  4, 4, C.dD],
-  [20, 24,  4, 4, C.dM],
-  // Dried leaf left — curled
-  [12, 28,  8, 4, C.dD],
-  [12, 32,  4, 4, C.dM],
-  [16, 32,  4, 4, C.dL],
-  // Stem full height
-  ...makeStem(16),
-  ...pot,
-]
+// ── FLOWER ───────────────────────────────────────────────────────────────────
+const FLOWER: Record<PlantState, Rect[]> = {
+  thriving: [
+    // Stem leaves
+    [12,36,16,8,C.fsM],[12,36,8,4,C.fsL],
+    [36,40,16,8,C.fsM],[44,40,4,4,C.fsL],
+    // Petals (all 5)
+    [28,4,8,12,C.fpM],   // top
+    [12,12,16,8,C.fpM],  // left
+    [36,12,16,8,C.fpM],  // right
+    [16,6,12,10,C.fpL],  // top-left
+    [36,6,12,10,C.fpL],  // top-right
+    [28,22,8,6,C.fpL],   // bottom short
+    // Petal shading
+    [28,4,4,8,C.fpD],[12,12,4,4,C.fpD],[48,14,4,4,C.fpD],
+    [18,8,4,4,C.fpL],[40,8,4,4,C.fpL],
+    // Center
+    [24,12,16,12,C.fcO],[26,14,12,8,C.fcY],[30,16,4,4,'#fff7ed'],
+    ...flStem(28),...pot,
+  ],
+  doing_okay: [
+    // Stem leaves (smaller)
+    [14,38,12,6,C.fsM],[38,42,12,6,C.fsM],
+    // Fewer petals
+    [28,8,8,12,C.fpM],
+    [12,16,16,8,C.fpM],[36,16,16,8,C.fpM],
+    [18,10,10,8,C.fpL],[36,10,10,8,C.fpL],
+    [28,8,4,8,C.fpD],[12,16,4,4,C.fpD],[48,18,4,4,C.fpD],
+    // Center (smaller)
+    [26,16,12,8,C.fcO],[28,18,8,4,C.fcY],
+    ...flStem(28),...pot,
+  ],
+  wilting: [
+    // Drooping stem (angled right)
+    [28,24,8,4,C.fsD],[28,28,8,4,C.fsD],[28,32,8,4,C.fsD],
+    [30,36,8,4,C.fsD],[32,40,8,4,C.fsD],[32,44,8,4,C.fsD],
+    // Drooping flower head (shifted right + down)
+    [36,14,12,4,C.fwM],[40,18,12,8,C.fwD],[44,22,8,8,C.fwD],
+    [36,14,4,4,C.fwM],[48,22,4,4,C.fwM],
+    [40,18,8,8,C.fcO],
+    // Fallen petal
+    [14,44,8,4,C.fpM],
+    ...pot,
+  ],
+  dead: [
+    // Bare stick
+    [28,12,8,40,C.fsD],[28,12,4,40,C.fsM],
+    // Fallen dried petals around base
+    [8,44,8,4,C.fwD],[12,48,8,4,C.fwD],
+    [44,44,12,4,C.fwD],[48,48,8,4,C.fwD],
+    [24,44,4,4,C.fwD],
+    // Dried bud at top
+    [28,8,8,4,C.fwM],[30,4,4,8,C.fwD],
+    ...pot,
+  ],
+}
 
-const STATE_RECTS: Record<PlantState, Rect[]> = {
-  thriving:  thrivingRects,
-  doing_okay: doingOkayRects,
-  wilting:   wiltingRects,
-  dead:      deadRects,
+// ── TREE ─────────────────────────────────────────────────────────────────────
+const TREE: Record<PlantState, Rect[]> = {
+  thriving: [
+    // Trunk + roots
+    [26,44,12,8,C.ttM],[26,44,4,8,C.ttL],[34,44,4,8,C.ttD],
+    [20,48,24,4,C.ttD],[20,48,8,4,C.ttM],
+    // Canopy bottom layer (widest)
+    [8,36,48,12,C.tcM],[8,36,16,4,C.tcB],[8,36,4,12,C.tcD],[52,36,4,12,C.tcD],
+    [16,40,8,8,C.tcB],[40,40,12,4,C.tcH],[24,36,8,4,C.tcH],
+    // Middle layer
+    [12,24,40,12,C.tcB],[12,24,12,4,C.tcH],[36,24,8,8,C.tcH],
+    [12,24,4,12,C.tcD],[48,24,4,12,C.tcD],[16,28,4,4,C.tcH],
+    // Top layer
+    [18,12,28,12,C.tcL],[18,12,8,4,C.tcH],[38,16,8,4,C.tcH],
+    [18,12,4,12,C.tcD],[42,12,4,12,C.tcD],
+    // Tip
+    [24,4,16,8,C.tcH],[24,4,4,8,C.tcD],[36,8,4,4,C.tcL],
+    ...pot,
+  ],
+  doing_okay: [
+    // Trunk
+    [26,44,12,8,C.ttM],[26,44,4,8,C.ttL],[34,44,4,8,C.ttD],
+    [20,48,24,4,C.ttD],[20,48,8,4,C.ttM],
+    // Bottom layer (slightly narrower)
+    [12,32,40,12,C.tcM],[12,32,12,4,C.tcB],[12,32,4,12,C.tcD],[48,32,4,12,C.tcD],
+    [20,36,8,8,C.tcB],[40,36,8,4,C.tcH],
+    // Middle layer
+    [16,20,32,12,C.tcB],[16,20,8,4,C.tcH],[16,20,4,12,C.tcD],[44,20,4,12,C.tcD],
+    [24,24,4,4,C.tcH],
+    // Top
+    [22,12,20,8,C.tcL],[22,12,4,8,C.tcD],[38,16,4,4,C.tcH],
+    ...pot,
+  ],
+  wilting: [
+    // Trunk
+    [26,44,12,8,C.ttM],[26,44,4,8,C.ttL],
+    [20,48,24,4,C.ttD],[20,48,8,4,C.ttM],
+    // Sparse yellowing canopy (broken outline feel)
+    [12,28,40,8,C.twM],[12,28,4,8,C.twD],[48,28,4,8,C.twD],
+    [16,28,8,4,C.twL],[44,32,8,4,C.twY],
+    [20,20,24,8,C.twM],[20,20,4,8,C.twD],[40,20,4,8,C.twD],
+    [24,24,4,4,C.twY],[36,20,4,4,C.twL],
+    [28,12,16,8,C.twL],[28,12,4,8,C.twD],
+    [32,16,4,4,C.twY],
+    // Fallen leaves
+    [8,48,8,4,C.twY],[52,44,8,4,C.twY],
+    ...pot,
+  ],
+  dead: [
+    // Trunk
+    [26,32,12,20,C.ttM],[26,32,4,20,C.ttL],[34,36,4,16,C.ttD],
+    [20,48,24,4,C.ttD],
+    // Bare branches
+    [28,24,4,8,C.ttD],
+    [8,28,20,4,C.tkM],[8,28,4,4,C.tkD],   // left branch
+    [36,28,20,4,C.tkM],[52,28,4,4,C.tkD],  // right branch
+    [16,20,8,4,C.tkM],  // left twig
+    [44,24,8,4,C.tkM],  // right twig
+    [28,16,4,8,C.tkM],  // top twig
+    [20,16,8,4,C.tkM],  // extra left
+    ...pot,
+  ],
+}
+
+const PLANTS: Record<PlantType, Record<PlantState, Rect[]>> = {
+  default: DEFAULT,
+  cactus: CACTUS,
+  flower: FLOWER,
+  tree: TREE,
 }
 
 export const STATE_LABELS: Record<PlantState, string> = {
-  thriving:  'Thriving',
+  thriving: 'Thriving',
   doing_okay: 'Doing okay',
-  wilting:   'Wilting',
-  dead:      'Dead',
+  wilting: 'Wilting',
+  dead: 'Dead',
 }
 
-export function PlantVisual({ state, onClick, size = 160 }: Props) {
+export const PLANT_TYPE_LABELS: Record<PlantType, string> = {
+  default: 'Leafy plant',
+  cactus: 'Cactus',
+  flower: 'Flower',
+  tree: 'Tree',
+}
+
+export function PlantVisual({ state, plantType = 'default', onClick, size = 160, hideLabel }: Props) {
   const [displayed, setDisplayed] = useState(state)
   const [fading, setFading] = useState(false)
 
   useEffect(() => {
     if (state === displayed) return
     setFading(true)
-    const t = setTimeout(() => {
-      setDisplayed(state)
-      setFading(false)
-    }, 350)
+    const t = setTimeout(() => { setDisplayed(state); setFading(false) }, 350)
     return () => clearTimeout(t)
   }, [state, displayed])
+
+  const rects = PLANTS[plantType][displayed]
 
   return (
     <div
@@ -233,17 +317,13 @@ export function PlantVisual({ state, onClick, size = 160 }: Props) {
         width={size}
         height={size * 1.5}
         xmlns="http://www.w3.org/2000/svg"
-        style={{
-          imageRendering: 'pixelated',
-          transition: 'opacity 0.35s ease',
-          opacity: fading ? 0 : 1,
-        }}
+        style={{ imageRendering: 'pixelated', transition: 'opacity 0.35s ease', opacity: fading ? 0 : 1 }}
       >
-        {STATE_RECTS[displayed].map(([x, y, w, h, fill], i) => (
+        {rects.map(([x, y, w, h, fill], i) => (
           <rect key={i} x={x} y={y} width={w} height={h} fill={fill} />
         ))}
       </svg>
-      <span className="text-sm font-semibold text-stone-600">{STATE_LABELS[displayed]}</span>
+      {!hideLabel && <span className="text-sm font-semibold text-stone-600">{STATE_LABELS[displayed]}</span>}
     </div>
   )
 }

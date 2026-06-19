@@ -50,7 +50,7 @@ export default function LobbyPage() {
   }
 
   function handleStart() {
-    router.push(`/${code}/reflect`)
+    router.push(`/${code}/choose-plant`)
   }
 
   async function handleSaveBrief() {

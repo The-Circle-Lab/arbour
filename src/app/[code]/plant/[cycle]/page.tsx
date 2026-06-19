@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { loadMember } from '@/lib/member-store'
-import { PlantVisual, PlantState } from '@/components/PlantVisual'
+import { PlantVisual, PlantState, PlantType } from '@/components/PlantVisual'
 import { WaitingRoom } from '@/components/WaitingRoom'
 import { COMPONENT_LABELS, ChatComponent } from '@/lib/chat-components'
 
@@ -28,6 +28,7 @@ export default function PlantPage() {
   const [resolutions, setResolutions] = useState<Resolution[]>([])
   const [teamId, setTeamId] = useState('')
   const [teamSize, setTeamSize] = useState(2)
+  const [plantType, setPlantType] = useState<PlantType>('default')
   const [revealed, setRevealed] = useState(false)
   const [resolutionNote, setResolutionNote] = useState('')
   const [saving, setSaving] = useState(false)
@@ -45,6 +46,7 @@ export default function PlantPage() {
     const teamData = await teamRes.json()
     setTeamId(teamData.id)
     setTeamSize(teamData.status.teamSize)
+    if (teamData.plant_type) setPlantType(teamData.plant_type as PlantType)
 
     const plantRes = await fetch(`/api/plant/${code.toUpperCase()}/${cycleNum}`)
     if (plantRes.ok) {
@@ -151,6 +153,7 @@ export default function PlantPage() {
         <div className="flex flex-col items-center my-8">
           <PlantVisual
             state={plantData.computed_state}
+            plantType={plantType}
             onClick={flagged.length > 0 ? () => setRevealed(r => !r) : undefined}
             size={180}
           />

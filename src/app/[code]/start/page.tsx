@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { loadMember } from '@/lib/member-store'
-import { PlantVisual } from '@/components/PlantVisual'
+import { PlantVisual, PlantType } from '@/components/PlantVisual'
 
 export default function StartPage() {
   const { code } = useParams<{ code: string }>()
@@ -12,6 +12,7 @@ export default function StartPage() {
   const [teamName, setTeamName] = useState('')
   const [nextCycle, setNextCycle] = useState<number | null>(null)
   const [done, setDone] = useState(false)
+  const [plantType, setPlantType] = useState<PlantType>('default')
 
   useEffect(() => {
     if (!identity) { router.replace('/'); return }
@@ -19,9 +20,9 @@ export default function StartPage() {
       .then(r => r.json())
       .then(d => {
         setTeamName(d.name)
+        if (d.plant_type) setPlantType(d.plant_type as PlantType)
         const phase: string = d.status?.phase ?? 'CHECKIN_1'
         if (phase === 'DONE') { setDone(true); return }
-        // CHECKIN_2 means cycle 1 is done, next is cycle 2
         if (phase === 'CHECKIN_2' || phase === 'PLANT_2') setNextCycle(2)
         else setNextCycle(1)
       })
@@ -30,7 +31,7 @@ export default function StartPage() {
   return (
     <main className="min-h-screen bg-green-700 flex items-center justify-center p-6">
       <div className="max-w-md w-full text-center">
-        <PlantVisual state="thriving" size={180} />
+        <PlantVisual state="thriving" plantType={plantType} size={180} />
         <h1 className="text-2xl font-bold text-white mt-6 mb-2">
           {teamName || 'Your team'} is aligned.
         </h1>
