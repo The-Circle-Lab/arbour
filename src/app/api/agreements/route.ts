@@ -86,8 +86,9 @@ export async function GET(req: Request) {
     resolution_note: string
     draft_text: string
     final_text: string
+    recorded_by: string
   }>(
-    'SELECT component, resolution_note, draft_text, final_text FROM agreements WHERE team_id = $1',
+    'SELECT component, resolution_note, draft_text, final_text, recorded_by FROM agreements WHERE team_id = $1',
     [teamId]
   )
 

@@ -10,6 +10,7 @@ interface Agreement {
   resolution_note: string | null
   draft_text: string | null
   final_text: string | null
+  recorded_by: string | null
 }
 
 interface Approval {
@@ -345,15 +346,22 @@ export default function AgreePage() {
                 onChange={e => { setEditText(e.target.value); setEditDirty(true) }}
                 disabled={fullyApproved}
               />
-              {!fullyApproved && editText !== ag?.final_text && (
-                <button
-                  onClick={handleSaveText}
-                  disabled={saving}
-                  className="mt-1 text-sm text-green-700 hover:underline"
-                >
-                  {saving ? 'Saving…' : 'Save edits'}
-                </button>
-              )}
+              <div className="flex items-center justify-between mt-1">
+                {ag.recorded_by && (
+                  <span className="text-xs text-stone-400">
+                    Last edited by {members.find(m => m.id === ag.recorded_by)?.display_name ?? 'teammate'}
+                  </span>
+                )}
+                {!fullyApproved && editText !== ag?.final_text && (
+                  <button
+                    onClick={handleSaveText}
+                    disabled={saving}
+                    className="text-sm text-green-700 hover:underline ml-auto"
+                  >
+                    {saving ? 'Saving…' : 'Save edits'}
+                  </button>
+                )}
+              </div>
             </div>
           )}
 
