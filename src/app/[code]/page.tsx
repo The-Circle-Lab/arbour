@@ -13,6 +13,7 @@ interface TeamData {
   members: { id: string; display_name: string }[]
   status: { phase: Phase; teamSize: number; reflectionsSubmitted: number }
   plant_type?: string | null
+  plant_votes?: Record<string, string> | null
 }
 
 export default function TeamHub() {
@@ -46,7 +47,8 @@ export default function TeamHub() {
         if (!memberExists) { setNotMember(true); return }
 
         const phase = data.status.phase
-        if (phase === 'REFLECTING' && !data.plant_type) router.push(`/${code}/lobby`)
+        const plantChosen = data.plant_type && data.plant_votes && Object.keys(data.plant_votes).length > 0
+        if (phase === 'REFLECTING' && !plantChosen) router.push(`/${code}/lobby`)
         else if (phase === 'REFLECTING') router.push(`/${code}/reflect`)
         else if (phase === 'REVEAL') router.push(`/${code}/reveal`)
         else if (phase === 'AGREEING') router.push(`/${code}/agree`)
