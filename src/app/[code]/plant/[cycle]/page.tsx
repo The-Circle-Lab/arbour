@@ -60,20 +60,25 @@ export default function PlantPage() {
   }
 
   async function handleResolveAll() {
+    if (!teamId) return
     setSaving(true)
-    await Promise.all(flagged.map(component =>
-      fetch('/api/resolutions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          teamId,
-          component,
-          cycleNumber: cycleNum,
-          resolutionNote: resolutionNote || null,
-          memberId: identity!.memberId,
-        }),
-      })
-    ))
+    try {
+      await Promise.all(flagged.map(component =>
+        fetch('/api/resolutions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            teamId,
+            component,
+            cycleNumber: cycleNum,
+            resolutionNote: resolutionNote || null,
+            memberId: identity!.memberId,
+          }),
+        })
+      ))
+    } catch (e) {
+      console.error('resolve error', e)
+    }
     setSaving(false)
     if (cycleNum === 1) router.push(`/${code}/checkin/2`)
     else router.push(`/${code}/start`)
@@ -202,7 +207,7 @@ export default function PlantPage() {
                     />
                     <button
                       onClick={handleResolveAll}
-                      disabled={saving}
+                      disabled={saving || !teamId}
                       className="w-full bg-stone-800 text-white rounded-lg py-2.5 text-sm font-medium hover:bg-stone-900 disabled:opacity-40 transition"
                     >
                       {saving ? 'Saving…' : 'We\'ve talked through everything →'}
