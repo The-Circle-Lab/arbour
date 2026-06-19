@@ -1,24 +1,28 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { loadMember } from '@/lib/member-store'
-import { PlantVisual } from '@/components/PlantVisual'
+import { PlantVisual, PlantType } from '@/components/PlantVisual'
 
 export default function CheckinIntroPage() {
   const { code } = useParams<{ code: string }>()
   const router = useRouter()
   const identity = loadMember()
+  const [plantType, setPlantType] = useState<PlantType>('default')
 
   useEffect(() => {
-    if (!identity) router.replace('/')
-  }, [identity, router])
+    if (!identity) { router.replace('/'); return }
+    fetch(`/api/teams/${code.toUpperCase()}`)
+      .then(r => r.json())
+      .then(d => { if (d.plant_type) setPlantType(d.plant_type as PlantType) })
+  }, [identity, router, code])
 
   return (
     <main className="min-h-screen bg-stone-50 flex items-center justify-center p-6">
       <div className="w-full max-w-sm text-center">
         <div className="flex justify-center mb-8">
-          <PlantVisual state="doing_okay" size={140} />
+          <PlantVisual state="doing_okay" plantType={plantType} size={140} />
         </div>
 
         <h1 className="text-2xl font-bold text-stone-800 mb-3">Time to check in.</h1>

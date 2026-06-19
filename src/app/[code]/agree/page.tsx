@@ -414,12 +414,20 @@ export default function AgreePage() {
 
         {/* Continue button */}
         {allDone ? (
-          <button
-            onClick={() => router.push(`/${code}/plant-intro`)}
-            className="w-full bg-green-700 text-white rounded-xl py-4 text-lg font-medium hover:bg-green-800 transition"
-          >
-            Continue to check-ins →
-          </button>
+          <div className="flex flex-col gap-3">
+            <button
+              onClick={() => router.push(`/${code}/plant-intro`)}
+              className="w-full bg-green-700 text-white rounded-xl py-4 text-lg font-medium hover:bg-green-800 transition"
+            >
+              Meet your plant →
+            </button>
+            <button
+              onClick={() => router.push(`/${code}/charter`)}
+              className="w-full text-sm text-stone-500 hover:text-stone-700 transition py-2"
+            >
+              View collaboration agreement
+            </button>
+          </div>
         ) : (
           <div className="text-center text-sm text-stone-400 py-2">
             {CHAT_COMPONENTS.length - totalApproved} component{CHAT_COMPONENTS.length - totalApproved !== 1 ? 's' : ''} still need agreement

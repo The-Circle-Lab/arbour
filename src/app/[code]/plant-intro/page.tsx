@@ -3,17 +3,21 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { loadMember } from '@/lib/member-store'
-import { PlantVisual } from '@/components/PlantVisual'
+import { PlantVisual, PlantType } from '@/components/PlantVisual'
 
 export default function PlantIntroPage() {
   const { code } = useParams<{ code: string }>()
   const router = useRouter()
   const identity = loadMember()
   const [step, setStep] = useState(0)
+  const [plantType, setPlantType] = useState<PlantType>('default')
 
   useEffect(() => {
-    if (!identity) router.replace('/')
-  }, [identity, router])
+    if (!identity) { router.replace('/'); return }
+    fetch(`/api/teams/${code.toUpperCase()}`)
+      .then(r => r.json())
+      .then(d => { if (d.plant_type) setPlantType(d.plant_type as PlantType) })
+  }, [identity, router, code])
 
   const steps = [
     {
@@ -66,7 +70,7 @@ export default function PlantIntroPage() {
 
         {/* Plant visual — always thriving on intro */}
         <div className="flex justify-center mb-8">
-          <PlantVisual state="thriving" size={140} />
+          <PlantVisual state="thriving" plantType={plantType} size={140} />
         </div>
 
         <h1 className="text-2xl font-bold text-stone-800 mb-3">{current.heading}</h1>

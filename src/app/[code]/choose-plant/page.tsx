@@ -35,8 +35,9 @@ export default function ChoosePlantPage() {
     setVotes(v)
     if (identity && v[identity.memberId]) setMyVote(v[identity.memberId] as PlantType)
 
-    // If team already has agreed plant_type, skip to reflect
-    if (data.plant_type) {
+    // Skip if team already agreed on a plant type via voting
+    const hasVotes = data.plant_votes && Object.keys(data.plant_votes).length > 0
+    if (data.plant_type && hasVotes) {
       router.push(`/${code}/reflect`)
     }
   }
@@ -117,7 +118,7 @@ export default function ChoosePlantPage() {
 
         {split && (
           <div className="text-center text-sm text-amber-700 bg-amber-50 rounded-xl border border-amber-100 py-4 px-5">
-            You picked <strong>{PLANT_TYPE_LABELS[myVote!]}</strong>, {teammate?.display_name} picked <strong>{PLANT_TYPE_LABELS[teammateVote as PlantType]}</strong>. Talk it over and tap to change your vote.
+            You picked <strong>{PLANT_TYPE_LABELS[myVote!]}</strong>, {teammate?.display_name} picked <strong>{PLANT_TYPE_LABELS[teammateVote as PlantType]}</strong>. Talk it over and tap to consolidate your vote.
           </div>
         )}
       </div>

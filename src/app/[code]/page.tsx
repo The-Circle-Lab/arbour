@@ -48,7 +48,7 @@ export default function TeamHub() {
 
         const phase = data.status.phase
         const plantChosen = data.plant_type && data.plant_votes && Object.keys(data.plant_votes).length > 0
-        if (phase === 'REFLECTING' && !plantChosen) router.push(`/${code}/lobby`)
+        if (phase === 'REFLECTING' && !plantChosen) router.push(`/${code}/choose-plant`)
         else if (phase === 'REFLECTING') router.push(`/${code}/reflect`)
         else if (phase === 'REVEAL') router.push(`/${code}/reveal`)
         else if (phase === 'AGREEING') router.push(`/${code}/agree`)
