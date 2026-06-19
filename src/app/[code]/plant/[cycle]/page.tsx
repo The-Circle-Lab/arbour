@@ -82,7 +82,7 @@ export default function PlantPage() {
       console.error('resolve error', e)
     }
     setSaving(false)
-    if (cycleNum === 1) router.push(`/${code}/checkin/2`)
+    if (cycleNum === 1) router.push(`/${code}/checkin-intro`)
     else router.push(`/${code}/start`)
   }
 

@@ -190,7 +190,7 @@ export default function LobbyPage() {
           disabled={members.length < 2}
           className="w-full bg-green-700 text-white rounded-xl py-4 text-lg font-medium hover:bg-green-800 disabled:opacity-40 transition"
         >
-          {members.length < 2 ? 'Waiting for teammates…' : 'Start reflecting →'}
+          {members.length < 2 ? 'Waiting for teammates…' : 'Pick a plant →'}
         </button>
         {members.length >= 2 && (
           <p className="text-xs text-stone-400 text-center mt-2">Each person taps this on their own device</p>
