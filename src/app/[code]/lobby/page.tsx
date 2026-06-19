@@ -86,7 +86,7 @@ export default function LobbyPage() {
 
         {/* Join code */}
         <div className="bg-white rounded-2xl border border-stone-100 shadow-sm p-5 mb-5">
-          <p className="text-xs text-stone-400 uppercase tracking-wide font-medium mb-2">Team code — share this</p>
+          <p className="text-xs text-stone-400 uppercase tracking-wide font-medium mb-2">Team code: share this</p>
           <div className="flex items-center gap-3">
             <span className="text-3xl font-mono font-bold tracking-widest text-green-700 flex-1">
               {code.toUpperCase()}
@@ -107,9 +107,9 @@ export default function LobbyPage() {
         <div className="bg-green-50 rounded-2xl border border-green-100 p-5 mb-5">
           <p className="text-xs text-green-700 uppercase tracking-wide font-semibold mb-3">What happens next</p>
           <ol className="text-sm text-green-900 space-y-2">
-            <li className="flex gap-2"><span className="font-bold">1.</span> Each of you reflects individually on 6 areas of your collaboration — privately, on your own screen.</li>
-            <li className="flex gap-2"><span className="font-bold">2.</span> Your answers are revealed side-by-side, and AI highlights where you align or diverge.</li>
-            <li className="flex gap-2"><span className="font-bold">3.</span> You discuss and write a group agreement for each area — everyone approves it.</li>
+            <li className="flex gap-2"><span className="font-bold">1.</span> Each of you reflects individually on 6 areas of your collaboration, privately, on your own screen.</li>
+            <li className="flex gap-2"><span className="font-bold">2.</span> Your answers are revealed side-by-side, and Arbor highlights where you align or diverge.</li>
+            <li className="flex gap-2"><span className="font-bold">3.</span> You discuss and write a group agreement for each area. Everyone approves it.</li>
             <li className="flex gap-2"><span className="font-bold">4.</span> Two check-in cycles surface tension as it builds, visualised as a plant.</li>
           </ol>
         </div>
@@ -138,9 +138,10 @@ export default function LobbyPage() {
         </div>
 
         {/* Project context — creator only */}
-        {isCreator && (
+        {isCreator ? (
           <div className="bg-white rounded-2xl border border-stone-100 shadow-sm p-5 mb-5">
-            <p className="text-xs text-stone-400 uppercase tracking-wide font-medium mb-3">Project details <span className="normal-case text-stone-300">(optional — helps Arbor give better analysis)</span></p>
+            <p className="text-xs text-stone-400 uppercase tracking-wide font-medium mb-1">Project details</p>
+            <p className="text-xs text-stone-400 mb-3">As team creator, you input the project details and act as scribe during agreements. Your teammates will see what you enter once saved.</p>
             <div className="flex flex-col gap-3">
               <input
                 className="border border-stone-200 rounded-lg px-3 py-2 text-sm text-stone-800 focus:outline-none focus:ring-2 focus:ring-green-500"
@@ -148,12 +149,15 @@ export default function LobbyPage() {
                 value={projectTitle}
                 onChange={e => setProjectTitle(e.target.value)}
               />
-              <input
-                type="date"
-                className="border border-stone-200 rounded-lg px-3 py-2 text-sm text-stone-800 focus:outline-none focus:ring-2 focus:ring-green-500"
-                value={deadline}
-                onChange={e => setDeadline(e.target.value)}
-              />
+              <div>
+                <label className="block text-xs text-stone-500 mb-1">Deadline</label>
+                <input
+                  type="date"
+                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm text-stone-800 focus:outline-none focus:ring-2 focus:ring-green-500"
+                  value={deadline}
+                  onChange={e => setDeadline(e.target.value)}
+                />
+              </div>
               <textarea
                 className="border border-stone-200 rounded-lg px-3 py-2 text-sm text-stone-800 resize-none focus:outline-none focus:ring-2 focus:ring-green-500"
                 rows={3}
@@ -169,6 +173,10 @@ export default function LobbyPage() {
                 {briefSaved ? '✓ Saved' : briefSaving ? 'Saving…' : 'Save project details'}
               </button>
             </div>
+          </div>
+        ) : (
+          <div className="bg-stone-50 border border-stone-100 rounded-xl px-4 py-3 mb-5 text-sm text-stone-500">
+            The team creator is entering the project details and deadline. They will also act as scribe during the agreements stage.
           </div>
         )}
 

@@ -79,7 +79,7 @@ export default function CharterPage() {
           >
             ← Back
           </button>
-          <h1 className="text-2xl font-bold text-stone-800">{teamName}: Collaboration Charter</h1>
+          <h1 className="text-2xl font-bold text-stone-800">{teamName}: Collaboration Agreement</h1>
           <p className="text-stone-500 text-sm mt-1">Your team's working agreements, updated over time.</p>
         </div>
 

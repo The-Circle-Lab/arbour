@@ -26,6 +26,15 @@ interface Reflection {
 
 type ComponentStatus = 'needs_resolution' | 'needs_draft' | 'needs_approval' | 'approved'
 
+const RESOLUTION_PLACEHOLDERS: Record<ChatComponent, string> = {
+  object: 'e.g. Annie wants a polished final product, Alan wants to learn new skills. We agreed to aim for both by splitting research and presentation.',
+  subject: 'e.g. Annie sees herself leading coordination, Alan prefers deep execution. We agreed on a lead/support split that rotates per task.',
+  division_of_labor: 'e.g. Annie takes design and front-end, Alan takes data and testing. We\'ll check in if scope shifts.',
+  rules: 'e.g. We agreed to use Slack for daily updates, meet Thursdays, and make decisions by consensus unless one person owns that area.',
+  tools: 'e.g. We agreed on Figma for design, GitHub for code, and Notion for notes. Annie will set up shared access.',
+  community: 'e.g. We agreed the instructor has input on scope but not day-to-day decisions. Group members decide how we work.',
+}
+
 export default function AgreePage() {
   const { code } = useParams<{ code: string }>()
   const router = useRouter()
@@ -299,7 +308,7 @@ export default function AgreePage() {
                     rows={2}
                     value={resolutionNote}
                     onChange={e => setResolutionNote(e.target.value)}
-                    placeholder="e.g. Annie takes UI, Michael takes the usability study"
+                    placeholder={RESOLUTION_PLACEHOLDERS[activeComponent]}
                   />
                   <p className="text-xs text-stone-400 mt-1">Your teammates will see this once you generate the agreement draft.</p>
                   <button
@@ -312,7 +321,7 @@ export default function AgreePage() {
                 </>
               ) : (
                 <div className="bg-stone-50 rounded-xl px-4 py-3 text-sm text-stone-500">
-                  Waiting for {creatorName} to write the resolution note and generate a draft — you'll be able to approve it once it's ready.
+                  Waiting for {creatorName} to write the resolution note and generate a draft. You'll be able to approve it once it's ready.
                 </div>
               )}
             </div>

@@ -18,17 +18,17 @@ export default function PlantIntroPage() {
   const steps = [
     {
       heading: 'Meet your plant.',
-      body: 'This is your team\'s collaboration health, made visible. It grows when your team is aligned — and wilts when tension builds.',
+      body: 'This is your team\'s collaboration health, made visible. It grows when your team is aligned, and wilts when tension builds.',
       cta: 'Got it →',
     },
     {
       heading: 'Keep it alive.',
-      body: 'After each working session or meeting, you\'ll come back to Arbor to check in. Your answers shape the plant. Honest ratings help — this is just for your team.',
+      body: 'After each working session or meeting, you\'ll come back to Arbor to check in. Your answers shape the plant. Honest ratings help: this is just for your team.',
       cta: 'Makes sense →',
     },
     {
       heading: 'Go do your project.',
-      body: 'Come back here after your first real working session or team meeting. That\'s when your first check-in happens — not right now.',
+      body: 'Come back here after your first real working session or team meeting. That\'s when your first check-in happens, not right now.',
       cta: 'We\'re ready to check in now →',
       secondary: 'We\'ll come back later',
     },

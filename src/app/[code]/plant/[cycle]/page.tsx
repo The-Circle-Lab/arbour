@@ -144,7 +144,7 @@ export default function PlantPage() {
             onClick={() => router.push(`/${code}/charter`)}
             className="text-xs text-stone-400 hover:text-stone-600 underline"
           >
-            View charter
+            View agreement
           </button>
         </div>
 
@@ -162,7 +162,7 @@ export default function PlantPage() {
         {(revealed || flagged.length === 0) && (
           <div className="bg-white rounded-2xl shadow-sm border border-stone-100 p-6 mb-4">
             {flagged.length === 0 ? (
-              <p className="text-green-700 font-medium text-center">Your team is aligned — no tensions detected.</p>
+              <p className="text-green-700 font-medium text-center">Your team is aligned: no tensions detected.</p>
             ) : (
               <>
                 {/* Nudge as bullet points */}

@@ -19,7 +19,11 @@
       "Bash(dir /s /b \"C:\\\\Users\\\\annhi\\\\OneDrive\\\\Documents\\\\arbor\\\\src\\\\app\\\\*page.tsx\")",
       "Bash(git commit -m 'Fix: switch checkin nudge to Haiku, strip JSON fencing, maxDuration on plant route *)",
       "Bash(git commit -m 'Fix: checkin readyCheck never triggered — wrong logic on ready field *)",
-      "Bash(mkdir -p \"C:\\\\Users\\\\annhi\\\\OneDrive\\\\Documents\\\\arbor\\\\src\\\\app\\\\[code]\\\\plant-intro\")"
+      "Bash(mkdir -p \"C:\\\\Users\\\\annhi\\\\OneDrive\\\\Documents\\\\arbor\\\\src\\\\app\\\\[code]\\\\plant-intro\")",
+      "Bash(git commit -m 'Fix: agree textarea wiped by polling — only sync from server if user hasn'\\\\''t edited *)",
+      "Bash(git commit -m 'Fix: agree textarea syncs to other screens once creator saves *)",
+      "Bash(git commit -m 'UX: differentiate creator vs non-creator on resolution note — waiting state for non-creators *)",
+      "Bash(git commit -m 'Fix: team nudge parsing — handle JSON string array from DB *)"
     ]
   }
 }

@@ -98,7 +98,7 @@ export default function ReflectPage() {
           <div className="flex-1">
             <div className="flex items-center justify-between mb-1">
               <span className="text-xs text-stone-400 font-medium uppercase tracking-wide">
-                {currentIdx + 1} of {CHAT_COMPONENTS.length} — Individual reflection
+                {currentIdx + 1} of {CHAT_COMPONENTS.length} · Individual reflection
               </span>
             </div>
             <div className="w-full bg-stone-200 rounded-full h-1.5">

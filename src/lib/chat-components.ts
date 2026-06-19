@@ -10,7 +10,7 @@ export const CHAT_COMPONENTS = [
 export type ChatComponent = (typeof CHAT_COMPONENTS)[number]
 
 export const COMPONENT_LABELS: Record<ChatComponent, string> = {
-  object: 'Define Success',
+  object: 'Objective',
   subject: 'Your Role & Goals',
   division_of_labor: 'Contribution Structure',
   rules: 'How We Work Together',

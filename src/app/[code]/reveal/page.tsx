@@ -6,12 +6,12 @@ import { loadMember } from '@/lib/member-store'
 import { CHAT_COMPONENTS, COMPONENT_LABELS, COMPONENT_DESCRIPTIONS, ChatComponent } from '@/lib/chat-components'
 
 const NEGOTIATION_NUDGES: Record<ChatComponent, string> = {
-  object:            'This difference is worth talking about — what does success actually mean to each of you, in practice?',
-  subject:           'This difference is worth talking about — what kind of role do you each picture yourself in, day to day?',
-  division_of_labor: 'This difference is worth talking about — who owns what, and does that match what you\'re each expecting to carry?',
-  rules:             'This difference is worth talking about — what does it actually feel like to work well together, and do you mean the same thing?',
-  tools:             'This difference is worth talking about — can you land on a specific list of tools you\'ll both actually use?',
-  community:         'This difference is worth talking about — who gets a say in how you work, and is that expectation shared?',
+  object:            'This difference is worth talking about: what does success actually mean to each of you, in practice?',
+  subject:           'This difference is worth talking about: what kind of role do you each picture yourself in, day to day?',
+  division_of_labor: 'This difference is worth talking about: who owns what, and does that match what you\'re each expecting to carry?',
+  rules:             'This difference is worth talking about: what does it actually feel like to work well together, and do you mean the same thing?',
+  tools:             'This difference is worth talking about: can you land on a specific list of tools you\'ll both actually use?',
+  community:         'This difference is worth talking about: who gets a say in how you work, and is that expectation shared?',
 }
 
 interface Reflection {
@@ -131,7 +131,7 @@ export default function RevealPage() {
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-stone-800">Reveal</h1>
           <p className="text-stone-500 text-sm mt-1">
-            See how your answers compare — before writing any agreement.
+            See how your answers compare, before writing any agreement.
           </p>
         </div>
 
@@ -163,7 +163,7 @@ export default function RevealPage() {
             </div>
             {flagged.includes(activeComponent) && (
               <span className="bg-amber-100 text-amber-700 text-xs font-semibold px-2.5 py-1 rounded-full">
-                Flagged — needs resolution
+                Flagged: needs resolution
               </span>
             )}
           </div>
@@ -221,19 +221,19 @@ export default function RevealPage() {
         {/* Summary + proceed */}
         {aiResult && (
           <div className="bg-white rounded-2xl shadow-sm border border-stone-100 p-6">
-            <h3 className="font-semibold text-stone-800 mb-3">Before you continue</h3>
+            <h3 className="font-semibold text-stone-800 mb-2">Before you continue</h3>
             {flagged.length === 0 ? (
-              <p className="text-sm text-green-700 mb-4">No major gaps detected. You can proceed to write your group agreements.</p>
+              <p className="text-sm text-stone-600 mb-4">No major gaps detected. When you're ready, move on to write your group agreements.</p>
             ) : (
-              <p className="text-sm text-amber-700 mb-4">
-                {flagged.length} component{flagged.length > 1 ? 's are' : ' is'} flagged. You'll need to record a resolution and get everyone's approval on each before check-ins unlock.
+              <p className="text-sm text-stone-600 mb-4">
+                Go through each <span className="text-amber-700 font-medium">⚠ flagged component</span> above and talk it through before moving on. You'll record your decisions in the next step.
               </p>
             )}
             <button
               onClick={handleProceedToAgreement}
               className="w-full bg-green-700 text-white rounded-xl py-3 font-medium hover:bg-green-800 transition"
             >
-              Discuss, then write agreements →
+              Let's start discussing →
             </button>
           </div>
         )}

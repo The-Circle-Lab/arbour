@@ -41,7 +41,7 @@ export default function StartPage() {
         <div className="space-y-3">
           {!done && nextCycle && (
             <button
-              onClick={() => router.push(`/${code}/checkin/${nextCycle}`)}
+              onClick={() => router.push(`/${code}/checkin-intro`)}
               className="w-full bg-white text-green-800 rounded-xl py-3.5 text-sm font-semibold hover:bg-green-50 transition"
             >
               Start a check-in →
@@ -56,7 +56,7 @@ export default function StartPage() {
             onClick={() => router.push(`/${code}/charter`)}
             className="w-full bg-white/10 text-white border border-white/20 rounded-xl py-3 text-sm font-medium hover:bg-white/20 transition"
           >
-            View collaboration charter
+            View collaboration agreement
           </button>
         </div>
 

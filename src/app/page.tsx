@@ -81,7 +81,7 @@ export default function LandingPage() {
 
               <div className="bg-white rounded-2xl border border-stone-100 shadow-sm p-5 text-left mb-8">
                 <p className="text-sm text-stone-600 leading-relaxed">
-                  Arbor helps teams get aligned before they start working. You each reflect privately on six areas of your collaboration, compare answers side-by-side, and write a shared agreement. As work progresses, short check-ins surface tension early — visualised as a plant that reflects your team's health.
+                  Arbor helps teams get aligned before they start working. You each reflect privately on six areas of your collaboration, compare answers side-by-side, and write a shared agreement. As work progresses, short check-ins surface tension early, visualised as a plant that reflects your team's health.
                 </p>
                 <p className="text-sm text-stone-600 leading-relaxed mt-3">
                   It's built on <span className="font-medium text-stone-800">Activity Theory</span>: a framework that maps collaboration across goals, roles, rules, tools, and community.
