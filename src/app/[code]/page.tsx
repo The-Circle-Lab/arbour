@@ -54,7 +54,7 @@ export default function TeamHub() {
         else if (phase === 'AGREEING') router.push(`/${code}/agree`)
         else if (phase === 'CHECKIN_1') router.push(`/${code}/checkin/1`)
         else if (phase === 'PLANT_1') router.push(`/${code}/plant/1`)
-        else if (phase === 'CHECKIN_2') router.push(`/${code}/checkin/2`)
+        else if (phase === 'CHECKIN_2') router.push(`/${code}/checkin-intro`)
         else if (phase === 'PLANT_2') router.push(`/${code}/plant/2`)
         else if (phase === 'DONE') router.push(`/${code}/start`)
       } catch { /* retry on next poll */ }
