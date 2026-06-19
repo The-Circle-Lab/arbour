@@ -90,13 +90,13 @@ export default function PlantPage() {
     if (!plantData) return
     const flagged = plantData.flagged_components
     if (flagged.length === 0) {
-      if (cycleNum === 1) setTimeout(() => router.push(`/${code}/checkin/2`), 2000)
+      if (cycleNum === 1) setTimeout(() => router.push(`/${code}/checkin-intro`), 2000)
       else setTimeout(() => router.push(`/${code}/start`), 2000)
       return
     }
     const allResolved = flagged.every(f => resolutions.some(r => r.component === f))
     if (allResolved) {
-      if (cycleNum === 1) setTimeout(() => router.push(`/${code}/checkin/2`), 1500)
+      if (cycleNum === 1) setTimeout(() => router.push(`/${code}/checkin-intro`), 1500)
       else setTimeout(() => router.push(`/${code}/start`), 1500)
     }
   }, [plantData, resolutions, cycleNum, code, router])
