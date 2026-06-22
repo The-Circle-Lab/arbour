@@ -3,7 +3,7 @@ export const maxDuration = 60
 import { NextResponse } from 'next/server'
 import { query, queryOne } from '@/lib/db'
 import { computePlantState, CheckinRow } from '@/lib/plant-logic'
-import { generateCheckinNudge, CheckinSummary } from '@/lib/ai'
+import { generateCheckinComparison, CheckinSummary } from '@/lib/ai'
 import { ChatComponent } from '@/lib/chat-components'
 
 export async function GET(_req: Request, { params }: { params: Promise<{ code: string; cycle: string }> }) {
@@ -21,8 +21,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ code: s
     computed_state: string
     flagged_components: string[]
     ai_nudge_text: string | string[]
+    per_component: Record<string, string>
   }>(
-    'SELECT computed_state, flagged_components, ai_nudge_text FROM plant_states WHERE team_id = $1 AND cycle_number = $2',
+    'SELECT computed_state, flagged_components, ai_nudge_text, per_component FROM plant_states WHERE team_id = $1 AND cycle_number = $2',
     [team.id, cycleNum]
   )
   if (cached) return NextResponse.json(cached)
@@ -81,7 +82,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ code: s
     }
   }
 
-  const nudgeResult = await generateCheckinNudge(
+  const comparison = await generateCheckinComparison(
     Array.from(memberMap.values()),
     agreements,
     cycleNum
@@ -90,19 +91,28 @@ export async function GET(_req: Request, { params }: { params: Promise<{ code: s
   // Merge AI flags with computed flags
   const allFlagged = Array.from(new Set([
     ...plantResult.flaggedComponents,
-    ...nudgeResult.flaggedComponents,
+    ...comparison.flaggedComponents,
   ]))
 
   await query(
-    `INSERT INTO plant_states (team_id, cycle_number, computed_state, flagged_components, ai_nudge_text)
-     VALUES ($1, $2, $3, $4, $5)
+    `INSERT INTO plant_states (team_id, cycle_number, computed_state, flagged_components, ai_nudge_text, per_component)
+     VALUES ($1, $2, $3, $4, $5, $6)
      ON CONFLICT (team_id, cycle_number) DO NOTHING`,
-    [team.id, cycleNum, plantResult.state, allFlagged, JSON.stringify(nudgeResult.nudgeBullets)]
+    [team.id, cycleNum, plantResult.state, allFlagged, null, JSON.stringify(comparison.perComponent)]
   )
+
+  // Flagged components are unsettled again — clear their approvals so the team
+  // must re-agree on the updated wording before the cycle counts as resolved.
+  if (allFlagged.length > 0) {
+    await query(
+      'DELETE FROM agreement_approvals WHERE team_id = $1 AND component = ANY($2)',
+      [team.id, allFlagged]
+    )
+  }
 
   return NextResponse.json({
     computed_state: plantResult.state,
     flagged_components: allFlagged,
-    ai_nudge_text: nudgeResult.nudgeBullets,
+    per_component: comparison.perComponent,
   })
 }

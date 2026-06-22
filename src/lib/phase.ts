@@ -59,6 +59,11 @@ export async function getTeamStatus(teamId: string): Promise<TeamStatus> {
     agreedRows.length === 6 &&
     agreedRows.every(r => r.approvals >= team_size)
 
+  // Per-component approval counts — used to tell when re-flagged components
+  // have been re-agreed after a check-in.
+  const approvalByComponent = new Map<string, number>()
+  for (const r of agreedRows) approvalByComponent.set(r.component, r.approvals)
+
   // Check-in counts (members who submitted all 6 components for a cycle)
   const checkin1Count = await countCheckinSubmissions(teamId, 1)
   const checkin2Count = await countCheckinSubmissions(teamId, 2)
@@ -75,23 +80,16 @@ export async function getTeamStatus(teamId: string): Promise<TeamStatus> {
   const hasFlagsAfterCycle1 = (plant1Row[0]?.flagged_components ?? []).length > 0
   const hasFlagsAfterCycle2 = (plant2Row[0]?.flagged_components ?? []).length > 0
 
-  const resolutions1 = hasFlagsAfterCycle1
-    ? await query<{ component: string }>(
-        'SELECT component FROM resolutions WHERE team_id = $1 AND cycle_number = 1',
-        [teamId]
-      )
-    : []
+  // A cycle is resolved when every component it flagged has been re-approved by
+  // all members (the plant route clears approvals for flagged components, so a
+  // full approval count means the team re-agreed on the updated wording).
   const flagged1 = plant1Row[0]?.flagged_components ?? []
-  const plant1Resolved = !hasFlagsAfterCycle1 || resolutions1.length >= flagged1.length
+  const plant1Resolved = !hasFlagsAfterCycle1 ||
+    flagged1.every(c => (approvalByComponent.get(c) ?? 0) >= team_size)
 
-  const resolutions2 = hasFlagsAfterCycle2
-    ? await query<{ component: string }>(
-        'SELECT component FROM resolutions WHERE team_id = $1 AND cycle_number = 2',
-        [teamId]
-      )
-    : []
   const flagged2 = plant2Row[0]?.flagged_components ?? []
-  const plant2Resolved = !hasFlagsAfterCycle2 || resolutions2.length >= flagged2.length
+  const plant2Resolved = !hasFlagsAfterCycle2 ||
+    flagged2.every(c => (approvalByComponent.get(c) ?? 0) >= team_size)
 
   // Derive phase
   let phase: Phase = 'REFLECTING'
