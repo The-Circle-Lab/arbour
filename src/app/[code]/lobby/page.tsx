@@ -8,6 +8,7 @@ import { ArborLogo } from '@/components/ArborLogo'
 interface Member {
   id: string
   display_name: string
+  pronouns?: string | null
 }
 
 export default function LobbyPage() {
@@ -126,6 +127,9 @@ export default function LobbyPage() {
                   {m.display_name[0].toUpperCase()}
                 </div>
                 <span className="text-stone-700 text-sm font-medium">{m.display_name}</span>
+                {m.pronouns && m.pronouns !== 'prefer not to say' && (
+                  <span className="text-xs text-stone-400">{m.pronouns}</span>
+                )}
                 {m.id === identity?.memberId && (
                   <span className="text-xs text-stone-400">(you)</span>
                 )}

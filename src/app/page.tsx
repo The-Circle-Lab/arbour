@@ -11,6 +11,7 @@ export default function LandingPage() {
   const [teamName, setTeamName] = useState('')
   const [joinCode, setJoinCode] = useState('')
   const [displayName, setDisplayName] = useState('')
+  const [pronouns, setPronouns] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -30,7 +31,7 @@ export default function LandingPage() {
       const joinRes = await fetch(`/api/teams/${team.join_code}/join`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ displayName }),
+        body: JSON.stringify({ displayName, pronouns }),
       })
       const member = await joinRes.json()
       if (!joinRes.ok) throw new Error(member.error)
@@ -52,7 +53,7 @@ export default function LandingPage() {
       const joinRes = await fetch(`/api/teams/${joinCode.toUpperCase()}/join`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ displayName }),
+        body: JSON.stringify({ displayName, pronouns }),
       })
       const member = await joinRes.json()
       if (!joinRes.ok) throw new Error(member.error)
@@ -128,6 +129,17 @@ export default function LandingPage() {
               value={displayName}
               onChange={e => setDisplayName(e.target.value)}
             />
+            <select
+              className="border border-stone-300 rounded-lg px-4 py-3 text-stone-800 bg-white focus:outline-none focus:ring-2 focus:ring-green-600"
+              value={pronouns}
+              onChange={e => setPronouns(e.target.value)}
+            >
+              <option value="">Pronouns (optional)</option>
+              <option value="she/her">She/Her</option>
+              <option value="he/him">He/Him</option>
+              <option value="they/them">They/Them</option>
+              <option value="prefer not to say">Prefer not to say</option>
+            </select>
             {error && <p className="text-red-500 text-sm">{error}</p>}
             <button
               onClick={handleCreate}
@@ -161,6 +173,17 @@ export default function LandingPage() {
               value={displayName}
               onChange={e => setDisplayName(e.target.value)}
             />
+            <select
+              className="border border-stone-300 rounded-lg px-4 py-3 text-stone-800 bg-white focus:outline-none focus:ring-2 focus:ring-green-600"
+              value={pronouns}
+              onChange={e => setPronouns(e.target.value)}
+            >
+              <option value="">Pronouns (optional)</option>
+              <option value="she/her">She/Her</option>
+              <option value="he/him">He/Him</option>
+              <option value="they/them">They/Them</option>
+              <option value="prefer not to say">Prefer not to say</option>
+            </select>
             {error && <p className="text-red-500 text-sm">{error}</p>}
             <button
               onClick={handleJoin}

@@ -10,8 +10,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ code: s
   )
   if (!team) return NextResponse.json({ error: 'Team not found' }, { status: 404 })
 
-  const members = await query<{ id: string; display_name: string; joined_at: string }>(
-    'SELECT id, display_name, joined_at FROM members WHERE team_id = $1 ORDER BY joined_at',
+  const members = await query<{ id: string; display_name: string; pronouns: string | null; joined_at: string }>(
+    'SELECT id, display_name, pronouns, joined_at FROM members WHERE team_id = $1 ORDER BY joined_at',
     [team.id]
   )
 
