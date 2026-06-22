@@ -334,33 +334,46 @@ export default function AgreePage() {
             </div>
           )}
 
-          {/* Editable draft */}
+          {/* Agreement draft — editable for scribe, read-only for others */}
           {ag?.final_text && (
             <div className="mb-4">
               <label className="block text-sm font-medium text-stone-700 mb-1">Agreement</label>
-              <textarea
-                className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm text-stone-800 resize-none focus:outline-none focus:ring-2 focus:ring-green-500"
-                rows={4}
-                value={editText}
-                onChange={e => { setEditText(e.target.value); setEditDirty(true); editDirtyRef.current = true }}
-                disabled={fullyApproved}
-              />
-              <div className="flex items-center justify-between mt-1">
-                {ag.recorded_by && (
-                  <span className="text-xs text-stone-400">
-                    Last edited by {members.find(m => m.id === ag.recorded_by)?.display_name ?? 'teammate'}
-                  </span>
-                )}
-                {!fullyApproved && editText !== ag?.final_text && (
-                  <button
-                    onClick={handleSaveText}
-                    disabled={saving}
-                    className="text-sm text-green-700 hover:underline ml-auto"
-                  >
-                    {saving ? 'Saving…' : 'Save edits'}
-                  </button>
-                )}
-              </div>
+              {isCreator ? (
+                <>
+                  <textarea
+                    className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm text-stone-800 resize-none focus:outline-none focus:ring-2 focus:ring-green-500"
+                    rows={4}
+                    value={editText}
+                    onChange={e => { setEditText(e.target.value); setEditDirty(true); editDirtyRef.current = true }}
+                    disabled={fullyApproved}
+                  />
+                  <div className="flex items-center justify-between mt-1">
+                    {ag.recorded_by && (
+                      <span className="text-xs text-stone-400">
+                        Last edited by {members.find(m => m.id === ag.recorded_by)?.display_name ?? 'teammate'}
+                      </span>
+                    )}
+                    {!fullyApproved && editText !== ag?.final_text && (
+                      <button
+                        onClick={handleSaveText}
+                        disabled={saving}
+                        className="text-sm text-green-700 hover:underline ml-auto"
+                      >
+                        {saving ? 'Saving…' : 'Save edits'}
+                      </button>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="w-full border border-stone-100 bg-stone-50 rounded-lg px-3 py-2 text-sm text-stone-800 whitespace-pre-wrap">
+                    {ag.final_text}
+                  </p>
+                  <p className="text-xs text-stone-400 mt-1">
+                    {creatorName} is the scribe and edits the wording. Read it over and approve when it looks right.
+                  </p>
+                </>
+              )}
             </div>
           )}
 

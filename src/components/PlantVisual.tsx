@@ -78,12 +78,12 @@ const DEFAULT: Record<PlantState, Rect[]> = {
     ...stem(40),...pot,
   ],
   doing_okay: [
-    [20,8,24,4,C.lD],[16,12,4,4,C.lD],[44,12,4,4,C.lD],[12,16,4,12,C.lD],[48,16,4,12,C.lD],
-    [16,28,4,4,C.lD],[44,28,4,4,C.lD],[20,32,24,4,C.lD],
-    [20,12,24,16,C.lM],[16,16,4,12,C.lM],[44,16,4,12,C.lM],
-    [24,12,12,8,C.lB],[36,16,8,8,C.lB],[20,24,8,4,C.lB],[28,12,4,4,C.lL],[40,16,4,4,C.lL],
-    [8,20,8,8,C.lD],[12,20,4,8,C.lM],[8,20,4,4,C.lB],
-    [48,20,8,8,C.lD],[48,20,4,8,C.lM],[52,20,4,4,C.lB],
+    // Smaller, sparser bush — fewer leaves, muted (no bright highlight), one side droops
+    [24,16,16,4,C.lD],[20,20,4,4,C.lD],[44,20,4,4,C.lD],[20,32,24,4,C.lD],
+    [22,20,20,12,C.lM],[18,24,4,8,C.lM],[44,24,4,8,C.lM],
+    [26,20,10,8,C.lB],[36,24,6,4,C.lB],
+    // Drooping lower-left leaf to signal "okay, not thriving"
+    [10,28,8,4,C.lD],[8,32,8,4,C.lM],[8,36,4,4,C.lM],[12,36,4,4,C.lD],
     ...stem(36),...pot,
   ],
   wilting: [
@@ -124,12 +124,10 @@ const CACTUS: Record<PlantState, Rect[]> = {
     ...pot,
   ],
   doing_okay: [
-    // Shorter main column
-    [24,24,16,28,C.caM],[24,24,4,28,C.caB],[36,28,4,20,C.caD],
-    // One left arm
-    [8,40,16,8,C.caM],[8,40,4,8,C.caB],[8,28,8,12,C.caM],[8,28,4,12,C.caB],[16,32,4,8,C.caD],
-    // Spine highlights
-    [20,32,4,4,C.caL],[20,40,4,4,C.caL],[40,28,4,4,C.caL],[4,32,4,4,C.caL],
+    // Shorter, no arms, no flowers — just the main column
+    [26,28,12,24,C.caM],[26,28,4,24,C.caB],[34,32,4,16,C.caD],
+    // A couple of muted spines
+    [24,36,4,4,C.caL],[34,40,4,4,C.caD],
     ...pot,
   ],
   wilting: [
@@ -173,16 +171,15 @@ const FLOWER: Record<PlantState, Rect[]> = {
     ...flStem(28),...pot,
   ],
   doing_okay: [
-    // Stem leaves (smaller)
-    [14,38,12,6,C.fsM],[38,42,12,6,C.fsM],
-    // Fewer petals
-    [28,8,8,12,C.fpM],
-    [12,16,16,8,C.fpM],[36,16,16,8,C.fpM],
-    [18,10,10,8,C.fpL],[36,10,10,8,C.fpL],
-    [28,8,4,8,C.fpD],[12,16,4,4,C.fpD],[48,18,4,4,C.fpD],
-    // Center (smaller)
-    [26,16,12,8,C.fcO],[28,18,8,4,C.fcY],
-    ...flStem(28),...pot,
+    // One small stem leaf
+    [14,40,12,6,C.fsM],
+    // Compact bloom: 3 petals only, muted (no light outer petals)
+    [28,12,8,10,C.fpM],
+    [16,18,12,8,C.fpM],[36,18,12,8,C.fpM],
+    [28,12,4,8,C.fpD],[16,18,4,4,C.fpD],
+    // Smaller center
+    [26,18,12,8,C.fcO],[28,20,8,4,C.fcY],
+    ...flStem(30),...pot,
   ],
   wilting: [
     // Drooping stem (angled right)
@@ -232,14 +229,13 @@ const TREE: Record<PlantState, Rect[]> = {
     // Trunk
     [26,44,12,8,C.ttM],[26,44,4,8,C.ttL],[34,44,4,8,C.ttD],
     [20,48,24,4,C.ttD],[20,48,8,4,C.ttM],
-    // Bottom layer (slightly narrower)
-    [12,32,40,12,C.tcM],[12,32,12,4,C.tcB],[12,32,4,12,C.tcD],[48,32,4,12,C.tcD],
-    [20,36,8,8,C.tcB],[40,36,8,4,C.tcH],
-    // Middle layer
-    [16,20,32,12,C.tcB],[16,20,8,4,C.tcH],[16,20,4,12,C.tcD],[44,20,4,12,C.tcD],
-    [24,24,4,4,C.tcH],
-    // Top
-    [22,12,20,8,C.tcL],[22,12,4,8,C.tcD],[38,16,4,4,C.tcH],
+    // Two layers only, narrower, muted (mid/dark greens, no bright highlight)
+    [16,32,32,12,C.tcM],[16,32,4,12,C.tcD],[44,32,4,12,C.tcD],
+    [24,36,8,8,C.tcB],
+    [20,22,24,10,C.tcM],[20,22,4,10,C.tcD],[40,22,4,10,C.tcD],
+    [28,26,8,4,C.tcB],
+    // Small top
+    [26,16,12,6,C.tcB],[26,16,4,6,C.tcD],
     ...pot,
   ],
   wilting: [
