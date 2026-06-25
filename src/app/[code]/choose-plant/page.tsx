@@ -60,9 +60,10 @@ export default function ChoosePlantPage() {
     setVoting(false)
   }
 
-  const teammate = members.find(m => m.id !== identity?.memberId)
-  const teammateVote = teammate ? votes[teammate.id] : null
-  const split = myVote && teammateVote && myVote !== teammateVote
+  const notYetVoted = members.filter(m => !votes[m.id])
+  const distinctChoices = new Set(Object.values(votes))
+  const everyoneVoted = members.length > 0 && notYetVoted.length === 0
+  const split = everyoneVoted && distinctChoices.size > 1
 
   return (
     <main className="min-h-screen bg-stone-50 flex items-center justify-center p-6">
@@ -70,14 +71,14 @@ export default function ChoosePlantPage() {
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold text-stone-800">Choose your plant</h1>
           <p className="text-stone-500 text-sm mt-1">
-            Pick the one that feels right for your team. Both of you need to agree.
+            Pick the one that feels right for your team. Everyone needs to agree.
           </p>
         </div>
 
         <div className="grid grid-cols-2 gap-4 mb-6">
           {PLANT_TYPES.map(type => {
             const isMyVote = myVote === type
-            const isTeammateVote = teammateVote === type
+            const voters = members.filter(m => votes[m.id] === type)
             return (
               <button
                 key={type}
@@ -91,15 +92,19 @@ export default function ChoosePlantPage() {
               >
                 <PlantVisual state="thriving" plantType={type} size={80} hideLabel />
                 <p className="text-sm font-semibold text-stone-700 mt-2">{PLANT_TYPE_LABELS[type]}</p>
-                <div className="flex gap-1 mt-1 min-h-[20px]">
-                  {isMyVote && (
-                    <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">You</span>
-                  )}
-                  {isTeammateVote && (
-                    <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
-                      {teammate?.display_name}
+                <div className="flex gap-1 mt-1 min-h-[20px] flex-wrap justify-center">
+                  {voters.map(v => (
+                    <span
+                      key={v.id}
+                      className={`text-xs px-2 py-0.5 rounded-full ${
+                        v.id === identity?.memberId
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-blue-100 text-blue-700'
+                      }`}
+                    >
+                      {v.id === identity?.memberId ? 'You' : v.display_name}
                     </span>
-                  )}
+                  ))}
                 </div>
               </button>
             )
@@ -110,15 +115,15 @@ export default function ChoosePlantPage() {
           <p className="text-center text-sm text-stone-400">Tap a plant to cast your vote.</p>
         )}
 
-        {myVote && !teammateVote && (
-          <div className="text-center text-sm text-stone-500 bg-white rounded-xl border border-stone-100 py-4">
-            Waiting for {teammate?.display_name ?? 'your teammate'} to vote…
+        {myVote && !everyoneVoted && (
+          <div className="text-center text-sm text-stone-500 bg-white rounded-xl border border-stone-100 py-4 px-5">
+            Waiting for {notYetVoted.map(m => m.display_name).join(', ')} to vote…
           </div>
         )}
 
         {split && (
           <div className="text-center text-sm text-amber-700 bg-amber-50 rounded-xl border border-amber-100 py-4 px-5">
-            You picked <strong>{PLANT_TYPE_LABELS[myVote!]}</strong>, {teammate?.display_name} picked <strong>{PLANT_TYPE_LABELS[teammateVote as PlantType]}</strong>. Talk it over and tap to consolidate your vote.
+            The team is split across {distinctChoices.size} plants. Talk it over and tap to consolidate on one.
           </div>
         )}
       </div>

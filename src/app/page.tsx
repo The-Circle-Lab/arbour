@@ -91,7 +91,7 @@ export default function LandingPage() {
             </div>
 
             <div className="bg-amber-50 border border-amber-100 rounded-xl px-4 py-3 mb-1 text-sm text-amber-800">
-              <span className="font-semibold">One person creates the team.</span> Share the code with your teammate and they join from this page.
+              <span className="font-semibold">One person creates the team.</span> Share the code with your teammates and they join from this page.
             </div>
 
             <div className="flex flex-col gap-3">
