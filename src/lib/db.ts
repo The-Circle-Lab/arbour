@@ -1,11 +1,11 @@
 import { Pool } from 'pg'
+import { getDatabaseUrl } from './database-url.ts'
 
 let _pool: Pool | null = null
 
 function getPool(): Pool {
   if (!_pool) {
-    const connectionString = process.env.DATABASE_URL
-    if (!connectionString) throw new Error('DATABASE_URL is not set')
+    const connectionString = getDatabaseUrl()
     _pool = new Pool({
       connectionString,
       ssl: { rejectUnauthorized: false },

@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "migrate": "ts-node --transpile-only scripts/run-migrate.ts up",
+    "migrate:down": "ts-node --transpile-only scripts/run-migrate.ts down"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.104.2",
@@ -26,6 +28,8 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "ts-node": "^10.9.1",
+    "node-pg-migrate": "^7.5.0"
   }
 }
