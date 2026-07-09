@@ -3,12 +3,14 @@ import { getDatabaseUrl } from './database-url.ts'
 
 let _pool: Pool | null = null
 
+const isProduction = process.env.NODE_ENV === 'production'
+
 function getPool(): Pool {
   if (!_pool) {
     const connectionString = getDatabaseUrl()
     _pool = new Pool({
       connectionString,
-      ssl: { rejectUnauthorized: false },
+      ssl: isProduction ? { rejectUnauthorized: false } : false,
     })
   }
   return _pool
