@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { loadMember } from '@/lib/member-store'
+import { useSession, getMembership } from '@/lib/session'
 import { CHAT_COMPONENTS, COMPONENT_LABELS, CHECKIN_QUESTIONS, ChatComponent, Rating, RATING_LABELS } from '@/lib/chat-components'
 import { WaitingRoom } from '@/components/WaitingRoom'
 
@@ -23,7 +23,8 @@ const RATING_COLORS: Record<Rating, string> = {
 export default function CheckinPage() {
   const { code, cycle } = useParams<{ code: string; cycle: string }>()
   const router = useRouter()
-  const identity = loadMember()
+  const { loading, user, memberships } = useSession()
+  const membership = getMembership(memberships, code)
   const cycleNum = parseInt(cycle)
 
   const [responses, setResponses] = useState<Partial<CheckinResponses>>({})
@@ -32,8 +33,9 @@ export default function CheckinPage() {
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
-    if (!identity) router.replace('/')
-  }, [identity, router])
+    if (loading) return
+    if (!user || !membership) router.replace('/')
+  }, [loading, user, membership, router])
 
   const currentComponent = CHAT_COMPONENTS[currentIdx]
   const questions = CHECKIN_QUESTIONS[currentComponent]
@@ -80,7 +82,7 @@ export default function CheckinPage() {
     await fetch('/api/checkins', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ memberId: identity!.memberId, cycleNumber: cycleNum, responses: normalized }),
+      body: JSON.stringify({ memberId: membership!.member_id, cycleNumber: cycleNum, responses: normalized }),
     })
     setSubmitting(false)
     setSubmitted(true)

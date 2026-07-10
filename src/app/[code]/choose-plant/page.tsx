@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { loadMember } from '@/lib/member-store'
+import { useSession, getMembership } from '@/lib/session'
 import { PlantVisual, PlantType, PLANT_TYPE_LABELS } from '@/components/PlantVisual'
 
 const PLANT_TYPES: PlantType[] = ['default', 'cactus', 'flower', 'tree']
@@ -10,7 +10,8 @@ const PLANT_TYPES: PlantType[] = ['default', 'cactus', 'flower', 'tree']
 export default function ChoosePlantPage() {
   const { code } = useParams<{ code: string }>()
   const router = useRouter()
-  const [identity] = useState(() => loadMember())
+  const { loading, user, memberships } = useSession()
+  const membership = getMembership(memberships, code)
 
   const [teamId, setTeamId] = useState('')
   const [members, setMembers] = useState<{ id: string; display_name: string }[]>([])
@@ -19,11 +20,12 @@ export default function ChoosePlantPage() {
   const [voting, setVoting] = useState(false)
 
   useEffect(() => {
-    if (!identity) { router.replace('/'); return }
+    if (loading) return
+    if (!user || !membership) { router.replace('/'); return }
     load()
     const interval = setInterval(load, 3000)
     return () => clearInterval(interval)
-  }, [code, identity])
+  }, [code, loading, user, membership])
 
   async function load() {
     const res = await fetch(`/api/teams/${code.toUpperCase()}`)
@@ -33,7 +35,7 @@ export default function ChoosePlantPage() {
     setMembers(data.members)
     const v: Record<string, string> = data.plant_votes ?? {}
     setVotes(v)
-    if (identity && v[identity.memberId]) setMyVote(v[identity.memberId] as PlantType)
+    if (membership && v[membership.member_id]) setMyVote(v[membership.member_id] as PlantType)
 
     // Skip if team already agreed on a plant type via voting
     const hasVotes = data.plant_votes && Object.keys(data.plant_votes).length > 0
@@ -43,13 +45,13 @@ export default function ChoosePlantPage() {
   }
 
   async function castVote(plantType: PlantType) {
-    if (!teamId || !identity || voting) return
+    if (!teamId || !membership || voting) return
     setVoting(true)
     setMyVote(plantType)
     const res = await fetch('/api/teams', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ teamId, plantVote: { memberId: identity.memberId, plantType } }),
+      body: JSON.stringify({ teamId, plantVote: { memberId: membership.member_id, plantType } }),
     })
     const data = await res.json()
     if (data.agreed) {
@@ -97,12 +99,12 @@ export default function ChoosePlantPage() {
                     <span
                       key={v.id}
                       className={`text-xs px-2 py-0.5 rounded-full ${
-                        v.id === identity?.memberId
+                        v.id === membership?.member_id
                           ? 'bg-green-100 text-green-700'
                           : 'bg-blue-100 text-blue-700'
                       }`}
                     >
-                      {v.id === identity?.memberId ? 'You' : v.display_name}
+                      {v.id === membership?.member_id ? 'You' : v.display_name}
                     </span>
                   ))}
                 </div>

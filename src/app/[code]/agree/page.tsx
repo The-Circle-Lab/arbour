@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { loadMember } from '@/lib/member-store'
+import { useSession, getMembership } from '@/lib/session'
 import { CHAT_COMPONENTS, COMPONENT_LABELS, COMPONENT_DESCRIPTIONS, ChatComponent } from '@/lib/chat-components'
 
 interface Agreement {
@@ -39,7 +39,8 @@ const RESOLUTION_PLACEHOLDERS: Record<ChatComponent, string> = {
 export default function AgreePage() {
   const { code } = useParams<{ code: string }>()
   const router = useRouter()
-  const [identity] = useState(() => loadMember())
+  const { loading, user, memberships } = useSession()
+  const membership = getMembership(memberships, code)
 
   const [teamId, setTeamId] = useState('')
   const [teamSize, setTeamSize] = useState(2)
@@ -60,11 +61,12 @@ export default function AgreePage() {
   const activeComponentRef = useRef<ChatComponent>('object')
 
   useEffect(() => {
-    if (!identity) { router.replace('/'); return }
+    if (loading) return
+    if (!user || !membership) { router.replace('/'); return }
     loadAll()
     const interval = setInterval(loadAll, 4000)
     return () => clearInterval(interval)
-  }, [code, identity])
+  }, [code, loading, user, membership])
 
   async function loadAll() {
     const teamRes = await fetch(`/api/teams/${code.toUpperCase()}`)
@@ -125,7 +127,7 @@ export default function AgreePage() {
         teamId: tid,
         component: comp,
         resolutionNote: note?.trim() || undefined,
-        memberId: identity!.memberId,
+        memberId: membership!.member_id,
       }),
     })
     await loadAll()
@@ -148,7 +150,7 @@ export default function AgreePage() {
     await fetch('/api/agreements', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ teamId, component: activeComponent, finalText: editText, memberId: identity!.memberId }),
+      body: JSON.stringify({ teamId, component: activeComponent, finalText: editText, memberId: membership!.member_id }),
     })
     await loadAll()
     setSaving(false)
@@ -161,7 +163,7 @@ export default function AgreePage() {
     await fetch('/api/agreements/approve', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ teamId, component: activeComponent, memberId: identity!.memberId }),
+      body: JSON.stringify({ teamId, component: activeComponent, memberId: membership!.member_id }),
     })
     await loadAll()
   }
@@ -171,7 +173,7 @@ export default function AgreePage() {
     await fetch('/api/agreements/approve', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ teamId, component: activeComponent, memberId: identity!.memberId }),
+      body: JSON.stringify({ teamId, component: activeComponent, memberId: membership!.member_id }),
     })
     await loadAll()
   }
@@ -189,13 +191,13 @@ export default function AgreePage() {
   const totalApproved = CHAT_COMPONENTS.filter(c => getStatus(c) === 'approved').length
   const allDone = totalApproved === CHAT_COMPONENTS.length
 
-  const isCreator = members[0]?.id === identity?.memberId
+  const isCreator = members[0]?.id === membership?.member_id
   const creatorName = members[0]?.display_name ?? 'your teammate'
 
   const ag = agreements[activeComponent]
   const isFlagged = flaggedComponents.includes(activeComponent)
   const compApprovals = approvals.filter(a => a.component === activeComponent)
-  const myApproval = compApprovals.some(a => a.member_id === identity?.memberId)
+  const myApproval = compApprovals.some(a => a.member_id === membership?.member_id)
   const fullyApproved = compApprovals.length >= teamSize
   const status = getStatus(activeComponent)
 

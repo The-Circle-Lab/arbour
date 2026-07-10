@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { loadMember } from '@/lib/member-store'
+import { useSession, getMembership } from '@/lib/session'
 import { CHAT_COMPONENTS, COMPONENT_LABELS, COMPONENT_DESCRIPTIONS, ChatComponent } from '@/lib/chat-components'
 
 const NEGOTIATION_NUDGES: Record<ChatComponent, string> = {
@@ -30,7 +30,8 @@ export default function RevealPage() {
   const { code } = useParams<{ code: string }>()
   const router = useRouter()
 
-  const [identity] = useState(() => loadMember())
+  const { loading, user, memberships } = useSession()
+  const membership = getMembership(memberships, code)
   const [reflections, setReflections] = useState<Reflection[]>([])
   const [members, setMembers] = useState<string[]>([])
   const [teamId, setTeamId] = useState('')
@@ -40,7 +41,8 @@ export default function RevealPage() {
   const [waitingForTeam, setWaitingForTeam] = useState(true)
 
   useEffect(() => {
-    if (!identity) { router.replace('/'); return }
+    if (loading) return
+    if (!user || !membership) { router.replace('/'); return }
 
     async function load() {
       let refData = null
@@ -67,7 +69,7 @@ export default function RevealPage() {
     }
 
     load()
-  }, [code, identity, router])
+  }, [loading, user, membership, code, router])
 
   const [aiTimedOut, setAiTimedOut] = useState(false)
 

@@ -2,22 +2,24 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { loadMember } from '@/lib/member-store'
+import { useSession, getMembership } from '@/lib/session'
 import { PlantVisual, PlantType } from '@/components/PlantVisual'
 
 export default function PlantIntroPage() {
   const { code } = useParams<{ code: string }>()
   const router = useRouter()
-  const identity = loadMember()
+  const { loading, user, memberships } = useSession()
+  const membership = getMembership(memberships, code)
   const [step, setStep] = useState(0)
   const [plantType, setPlantType] = useState<PlantType>('default')
 
   useEffect(() => {
-    if (!identity) { router.replace('/'); return }
+    if (loading) return
+    if (!user || !membership) { router.replace('/'); return }
     fetch(`/api/teams/${code.toUpperCase()}`)
       .then(r => r.json())
       .then(d => { if (d.plant_type) setPlantType(d.plant_type as PlantType) })
-  }, [identity, router, code])
+  }, [loading, user, membership, router, code])
 
   const steps = [
     {

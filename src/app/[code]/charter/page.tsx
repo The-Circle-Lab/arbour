@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { loadMember } from '@/lib/member-store'
+import { useSession, getMembership } from '@/lib/session'
 import { CHAT_COMPONENTS, COMPONENT_LABELS, COMPONENT_DESCRIPTIONS, ChatComponent } from '@/lib/chat-components'
 
 interface Agreement {
@@ -21,7 +21,8 @@ interface Resolution {
 export default function CharterPage() {
   const { code } = useParams<{ code: string }>()
   const router = useRouter()
-  const [identity] = useState(() => loadMember())
+  const { loading: sessionLoading, user, memberships } = useSession()
+  const membership = getMembership(memberships, code)
 
   const [teamName, setTeamName] = useState('')
   const [teamId, setTeamId] = useState('')
@@ -30,7 +31,8 @@ export default function CharterPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!identity) { router.replace('/'); return }
+    if (sessionLoading) return
+    if (!user || !membership) { router.replace('/'); return }
     async function load() {
       const teamRes = await fetch(`/api/teams/${code.toUpperCase()}`)
       if (!teamRes.ok) return
@@ -54,7 +56,7 @@ export default function CharterPage() {
       setLoading(false)
     }
     load()
-  }, [code, identity, router])
+  }, [sessionLoading, user, membership, code, router])
 
   if (loading) {
     return (
