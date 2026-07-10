@@ -2,19 +2,23 @@ import { NextResponse } from 'next/server'
 import { query, queryOne } from '@/lib/db'
 import { generateRevealComparison, MemberReflection } from '@/lib/ai'
 import { ChatComponent } from '@/lib/chat-components'
+import { requireTeamMember } from '@/lib/auth/team-access'
 
 export async function GET(_req: Request, { params }: { params: Promise<{ code: string }> }) {
   const { code } = await params
 
-  const team = await queryOne<{ id: string; project_title: string | null; deadline: string | null; assignment_brief: string | null }>(
-    'SELECT id, project_title, deadline, assignment_brief FROM teams WHERE join_code = $1',
-    [code.toUpperCase()]
+  const membership = await requireTeamMember(code)
+  if (!membership) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  const teamId = membership.teamId
+
+  const team = await queryOne<{ project_title: string | null; deadline: string | null; assignment_brief: string | null }>(
+    'SELECT project_title, deadline, assignment_brief FROM teams WHERE id = $1',
+    [teamId]
   )
-  if (!team) return NextResponse.json({ error: 'Team not found' }, { status: 404 })
 
   const [{ team_size }] = await query<{ team_size: number }>(
     'SELECT COUNT(*)::int AS team_size FROM members WHERE team_id = $1',
-    [team.id]
+    [teamId]
   )
 
   // Count members who submitted all 6 components
@@ -24,7 +28,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ code: s
      JOIN members m ON m.id = ir.member_id
      WHERE m.team_id = $1
      GROUP BY ir.member_id`,
-    [team.id]
+    [teamId]
   )
   const submitted = submittedRows.filter(r => r.count >= 6).length
 
@@ -44,11 +48,11 @@ export async function GET(_req: Request, { params }: { params: Promise<{ code: s
      JOIN members m ON m.id = ir.member_id
      WHERE m.team_id = $1
      ORDER BY m.joined_at, ir.component`,
-    [team.id]
+    [teamId]
   )
 
   // Kick off AI generation server-side if not already done (fire-and-forget, no await)
-  const existing = await queryOne('SELECT id FROM reveal_ai WHERE team_id = $1', [team.id])
+  const existing = await queryOne('SELECT id FROM reveal_ai WHERE team_id = $1', [teamId])
   if (!existing) {
     const memberMap = new Map<string, MemberReflection>()
     for (const row of reflections) {
@@ -58,16 +62,16 @@ export async function GET(_req: Request, { params }: { params: Promise<{ code: s
       memberMap.get(row.member_id)!.responses[row.component as ChatComponent] = row.response_data
     }
     const projectContext = [
-      team.project_title ? `Title: ${team.project_title}` : '',
-      team.deadline ? `Deadline: ${team.deadline}` : '',
-      team.assignment_brief ? `Brief: ${team.assignment_brief}` : '',
+      team?.project_title ? `Title: ${team.project_title}` : '',
+      team?.deadline ? `Deadline: ${team.deadline}` : '',
+      team?.assignment_brief ? `Brief: ${team.assignment_brief}` : '',
     ].filter(Boolean).join('\n') || undefined
 
     generateRevealComparison(Array.from(memberMap.values()), projectContext)
       .then(result => query(
         `INSERT INTO reveal_ai (team_id, per_component, flagged_components)
          VALUES ($1, $2, $3) ON CONFLICT (team_id) DO NOTHING`,
-        [team.id, JSON.stringify(result.perComponent), result.flaggedComponents]
+        [teamId, JSON.stringify(result.perComponent), result.flaggedComponents]
       ))
       .catch(e => console.error('reveal-ai generation error:', e))
   }

@@ -1,7 +1,7 @@
 import { SignJWT, jwtVerify } from 'jose'
 import { cookies } from 'next/headers'
 
-const COOKIE_NAME = 'arbor_session'
+export const SESSION_COOKIE_NAME = 'arbor_session'
 const EXPIRATION = '30d'
 const MAX_AGE_SECONDS = 60 * 60 * 24 * 30
 
@@ -33,7 +33,7 @@ export async function verifySessionToken(token: string): Promise<SessionPayload 
 }
 
 export async function requireUser(): Promise<string | null> {
-  const token = (await cookies()).get(COOKIE_NAME)?.value
+  const token = (await cookies()).get(SESSION_COOKIE_NAME)?.value
   if (!token) return null
   const payload = await verifySessionToken(token)
   return payload?.userId ?? null
@@ -41,7 +41,7 @@ export async function requireUser(): Promise<string | null> {
 
 export async function setSessionCookie(token: string): Promise<void> {
   const cookieStore = await cookies()
-  cookieStore.set(COOKIE_NAME, token, {
+  cookieStore.set(SESSION_COOKIE_NAME, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
@@ -52,5 +52,5 @@ export async function setSessionCookie(token: string): Promise<void> {
 
 export async function clearSessionCookie(): Promise<void> {
   const cookieStore = await cookies()
-  cookieStore.delete(COOKIE_NAME)
+  cookieStore.delete(SESSION_COOKIE_NAME)
 }

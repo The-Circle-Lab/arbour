@@ -1,15 +1,13 @@
 import { NextResponse } from 'next/server'
-import { query, queryOne } from '@/lib/db'
+import { query } from '@/lib/db'
 import { CHAT_COMPONENTS } from '@/lib/chat-components'
+import { requireOwnedMember, requireTeamMemberByTeamId } from '@/lib/auth/team-access'
 
 export async function POST(req: Request) {
   const { memberId, cycleNumber, responses } = await req.json()
 
-  const member = await queryOne<{ id: string; team_id: string }>(
-    'SELECT id, team_id FROM members WHERE id = $1',
-    [memberId]
-  )
-  if (!member) return NextResponse.json({ error: 'Member not found' }, { status: 404 })
+  const owned = await requireOwnedMember(memberId)
+  if (!owned) return NextResponse.json({ error: 'Not authorized for this member' }, { status: 403 })
 
   for (const component of CHAT_COMPONENTS) {
     if (!responses[component]) continue
@@ -30,6 +28,9 @@ export async function GET(req: Request) {
   const teamId = searchParams.get('teamId')
   const cycle = searchParams.get('cycle')
   if (!teamId || !cycle) return NextResponse.json({ error: 'teamId and cycle required' }, { status: 400 })
+
+  const membership = await requireTeamMemberByTeamId(teamId)
+  if (!membership) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const checkins = await query<{
     member_id: string

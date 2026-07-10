@@ -1,8 +1,14 @@
 import { NextResponse } from 'next/server'
-import { query, queryOne } from '@/lib/db'
+import { query } from '@/lib/db'
+import { requireOwnedMember, requireTeamMemberByTeamId } from '@/lib/auth/team-access'
 
 export async function POST(req: Request) {
   const { teamId, component, cycleNumber, resolutionNote, memberId } = await req.json()
+
+  const owned = await requireOwnedMember(memberId)
+  if (!owned || owned.teamId !== teamId) {
+    return NextResponse.json({ error: 'Not authorized for this member' }, { status: 403 })
+  }
 
   await query(
     `INSERT INTO resolutions (team_id, component, cycle_number, resolution_note, resolved_by)
@@ -21,6 +27,9 @@ export async function GET(req: Request) {
   const cycle = searchParams.get('cycle')
 
   if (!teamId) return NextResponse.json({ error: 'teamId required' }, { status: 400 })
+
+  const membership = await requireTeamMemberByTeamId(teamId)
+  if (!membership) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const rows = await query<{ component: string; cycle_number: number; resolution_note: string; resolved_at: string }>(
     cycle

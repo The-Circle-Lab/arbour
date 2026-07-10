@@ -4,20 +4,19 @@ import { NextResponse } from 'next/server'
 import { query, queryOne } from '@/lib/db'
 import { generateRevealComparison, MemberReflection } from '@/lib/ai'
 import { ChatComponent } from '@/lib/chat-components'
+import { requireTeamMember } from '@/lib/auth/team-access'
 
 export async function POST(_req: Request, { params }: { params: Promise<{ code: string }> }) {
   const { code } = await params
 
-  const team = await queryOne<{ id: string }>(
-    'SELECT id FROM teams WHERE join_code = $1',
-    [code.toUpperCase()]
-  )
-  if (!team) return NextResponse.json({ error: 'Team not found' }, { status: 404 })
+  const membership = await requireTeamMember(code)
+  if (!membership) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  const teamId = membership.teamId
 
   // Return cached result if exists
   const cached = await queryOne<{ per_component: Record<ChatComponent, string>; flagged_components: string[] }>(
     'SELECT per_component, flagged_components FROM reveal_ai WHERE team_id = $1',
-    [team.id]
+    [teamId]
   )
   if (cached) return NextResponse.json(cached)
 
@@ -33,7 +32,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ code: 
      JOIN members m ON m.id = ir.member_id
      WHERE m.team_id = $1
      ORDER BY m.joined_at`,
-    [team.id]
+    [teamId]
   )
 
   // Group by member
@@ -52,7 +51,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ code: 
     `INSERT INTO reveal_ai (team_id, per_component, flagged_components)
      VALUES ($1, $2, $3)
      ON CONFLICT (team_id) DO NOTHING`,
-    [team.id, JSON.stringify(result.perComponent), result.flaggedComponents]
+    [teamId, JSON.stringify(result.perComponent), result.flaggedComponents]
   )
 
   return NextResponse.json({
@@ -63,15 +62,13 @@ export async function POST(_req: Request, { params }: { params: Promise<{ code: 
 
 export async function GET(_req: Request, { params }: { params: Promise<{ code: string }> }) {
   const { code } = await params
-  const team = await queryOne<{ id: string }>(
-    'SELECT id FROM teams WHERE join_code = $1',
-    [code.toUpperCase()]
-  )
-  if (!team) return NextResponse.json({ error: 'Team not found' }, { status: 404 })
+
+  const membership = await requireTeamMember(code)
+  if (!membership) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const cached = await queryOne<{ per_component: Record<ChatComponent, string>; flagged_components: string[] }>(
     'SELECT per_component, flagged_components FROM reveal_ai WHERE team_id = $1',
-    [team.id]
+    [membership.teamId]
   )
   if (!cached) return NextResponse.json({ ready: false }, { status: 404 })
   return NextResponse.json(cached)

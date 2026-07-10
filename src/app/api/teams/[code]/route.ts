@@ -1,9 +1,14 @@
 import { NextResponse } from 'next/server'
 import { query, queryOne } from '@/lib/db'
 import { getTeamStatus } from '@/lib/phase'
+import { requireTeamMember } from '@/lib/auth/team-access'
 
 export async function GET(_req: Request, { params }: { params: Promise<{ code: string }> }) {
   const { code } = await params
+
+  const membership = await requireTeamMember(code)
+  if (!membership) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
   const team = await queryOne<{ id: string; name: string; join_code: string; project_title: string | null; deadline: string | null; assignment_brief: string | null; plant_type: string | null; plant_votes: Record<string, string> | null }>(
     'SELECT id, name, join_code, project_title, deadline, assignment_brief, plant_type, plant_votes FROM teams WHERE join_code = $1',
     [code.toUpperCase()]
