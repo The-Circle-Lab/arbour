@@ -1,9 +1,5 @@
-import Anthropic from '@anthropic-ai/sdk'
 import { ChatComponent, COMPONENT_LABELS } from './chat-components'
-
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-const MODEL_FAST = 'claude-haiku-4-5-20251001'
-const MODEL = 'claude-sonnet-4-6'
+import { sendAiApiRequest } from './ai-api'
 
 export interface MemberReflection {
   displayName: string
@@ -49,20 +45,12 @@ Respond with valid JSON only, no markdown:
   }
 }`
 
-  const message = await client.messages.create({
-    model: MODEL_FAST,
-    max_tokens: 1500,
-    messages: [{ role: 'user', content: prompt }],
-  })
-
-  const raw = (message.content[0] as { type: string; text: string }).text
-  const text = raw.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim()
-  const parsed = JSON.parse(text)
+  const message = await sendAiApiRequest('fast_model', 1500, prompt)
 
   const perComponent: Record<ChatComponent, string> = {} as Record<ChatComponent, string>
   const flaggedComponents: ChatComponent[] = []
 
-  for (const [comp, val] of Object.entries(parsed.components)) {
+  for (const [comp, val] of Object.entries(message.components)) {
     const v = val as { comment: string; flagged: boolean }
     perComponent[comp as ChatComponent] = v.comment
     if (v.flagged) flaggedComponents.push(comp as ChatComponent)
@@ -94,15 +82,14 @@ ${responseText}${resolutionSection}
 
 Draft a 1-2 sentence group agreement in first-person plural (starting with "We...") that captures what this team has decided about ${COMPONENT_LABELS[component]}. Plain language, no jargon. Be specific to what they actually wrote — do not add things they didn't say.
 
-Respond with just the agreement text, no quotes or extra formatting.`
+Respond with valid JSON only, no markdown. Escape any double quotes or newlines inside the agreement text so the JSON stays valid:
+{
+  "agreement": "..."
+}`
 
-  const message = await client.messages.create({
-    model: MODEL,
-    max_tokens: 300,
-    messages: [{ role: 'user', content: prompt }],
-  })
+  const message = await sendAiApiRequest('default_model', 300, prompt)
 
-  return (message.content[0] as { type: string; text: string }).text.trim()
+  return message.agreement as string
 }
 
 export async function reviseAgreement(
@@ -122,15 +109,15 @@ After discussing the tension, the team noted:
 
 Rewrite the agreement as 1-2 sentences in first-person plural (starting with "We...") so it reflects what the team has now decided. Keep what still holds from the current agreement and fold in the new decision. Plain language, no jargon. Be specific to what they actually wrote — do not add things they didn't say.
 
-Respond with just the revised agreement text, no quotes or extra formatting.`
+Respond with valid JSON only, no markdown. Escape any double quotes or newlines inside the agreement text so the JSON stays valid:
+{
+  "agreement": "..."
+}
+`
 
-  const message = await client.messages.create({
-    model: MODEL,
-    max_tokens: 300,
-    messages: [{ role: 'user', content: prompt }],
-  })
+  const message = await sendAiApiRequest('default_model', 300, prompt)
 
-  return (message.content[0] as { type: string; text: string }).text.trim()
+  return message.agreement as string
 }
 
 export interface CheckinSummary {
@@ -185,19 +172,11 @@ Respond with valid JSON only, no markdown:
   }
 }`
 
-  const message = await client.messages.create({
-    model: MODEL_FAST,
-    max_tokens: 1500,
-    messages: [{ role: 'user', content: prompt }],
-  })
-
-  const raw = (message.content[0] as { type: string; text: string }).text
-  const text = raw.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim()
-  const parsed = JSON.parse(text)
+  const message = await sendAiApiRequest('fast_model', 1500, prompt)
 
   const perComponent: Record<ChatComponent, string> = {} as Record<ChatComponent, string>
   const flaggedComponents: ChatComponent[] = []
-  for (const [comp, val] of Object.entries(parsed.components)) {
+  for (const [comp, val] of Object.entries(message.components)) {
     const v = val as { comment: string; flagged: boolean }
     perComponent[comp as ChatComponent] = v.comment
     if (v.flagged) flaggedComponents.push(comp as ChatComponent)
@@ -247,18 +226,10 @@ Respond with valid JSON only, no markdown:
   "nudge_bullets": ["...", "...", "..."]
 }`
 
-  const message = await client.messages.create({
-    model: MODEL_FAST,
-    max_tokens: 500,
-    messages: [{ role: 'user', content: prompt }],
-  })
-
-  const raw = (message.content[0] as { type: string; text: string }).text
-  const text = raw.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim()
-  const parsed = JSON.parse(text)
+  const message = await sendAiApiRequest('fast_model', 500, prompt)
 
   return {
-    flaggedComponents: parsed.flagged_components as ChatComponent[],
-    nudgeBullets: (parsed.nudge_bullets ?? [parsed.nudge].filter(Boolean)) as string[],
+    flaggedComponents: message.flagged_components as ChatComponent[],
+    nudgeBullets: (message.nudge_bullets ?? [message.nudge].filter(Boolean)) as string[],
   }
 }
