@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { query, queryOne } from '@/lib/db'
+import { requireUser } from '@/lib/auth/jwt'
 import { requireOwnedMember, requireTeamMemberByTeamId } from '@/lib/auth/team-access'
 
 function randomCode(): string {
@@ -9,6 +10,9 @@ function randomCode(): string {
 
 export async function POST(req: Request) {
   try {
+    const userId = await requireUser()
+    if (!userId) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+
     const { name } = await req.json()
     if (!name?.trim()) return NextResponse.json({ error: 'Name required' }, { status: 400 })
 
