@@ -1,5 +1,50 @@
-import { ChatComponent, COMPONENT_LABELS } from './chat-components'
+import { CHAT_COMPONENTS, ChatComponent, COMPONENT_LABELS } from './chat-components'
 import { sendAiApiRequest } from './ai-api'
+
+interface ComponentAnalysisResponse {
+  components: Record<ChatComponent, { comment: string; flagged: boolean }>
+}
+
+const componentAnalysisSchema = {
+  type: 'object',
+  properties: {
+    components: {
+      type: 'object',
+      properties: Object.fromEntries(CHAT_COMPONENTS.map(c => [c, {
+        type: 'object',
+        properties: {
+          comment: { type: 'string' },
+          flagged: { type: 'boolean' },
+        },
+        required: ['comment', 'flagged'],
+        additionalProperties: false,
+      }])),
+      required: [...CHAT_COMPONENTS],
+      additionalProperties: false,
+    },
+  },
+  required: ['components'],
+  additionalProperties: false,
+}
+
+const agreementSchema = {
+  type: 'object',
+  properties: {
+    agreement: { type: 'string' },
+  },
+  required: ['agreement'],
+  additionalProperties: false,
+}
+
+const nudgeSchema = {
+  type: 'object',
+  properties: {
+    flagged_components: { type: 'array', items: { type: 'string', enum: [...CHAT_COMPONENTS] } },
+    nudge_bullets: { type: 'array', items: { type: 'string' } },
+  },
+  required: ['flagged_components', 'nudge_bullets'],
+  additionalProperties: false,
+}
 
 export interface MemberReflection {
   displayName: string
@@ -31,27 +76,14 @@ ${memberSummaries}
 
 For each of the six CHAT components (object, subject, division_of_labor, rules, tools, community), do two things:
 1. Write a 2-3 sentence plain-language comment on where the members align or where a gap exists. Name the CHAT component explicitly. Do not tell the team what to do — only name the gap or alignment. No jargon beyond the component name itself.
-2. Decide if this component should be FLAGGED (true/false). Flag it if there is a meaningful gap or potential misalignment that the team should discuss before proceeding.
+2. Decide if this component should be FLAGGED (true/false). Flag it if there is a meaningful gap or potential misalignment that the team should discuss before proceeding.`
 
-Respond with valid JSON only, no markdown:
-{
-  "components": {
-    "object": { "comment": "...", "flagged": true/false },
-    "subject": { "comment": "...", "flagged": true/false },
-    "division_of_labor": { "comment": "...", "flagged": true/false },
-    "rules": { "comment": "...", "flagged": true/false },
-    "tools": { "comment": "...", "flagged": true/false },
-    "community": { "comment": "...", "flagged": true/false }
-  }
-}`
-
-  const message = await sendAiApiRequest('fast_model', 1500, prompt)
+  const message = await sendAiApiRequest<ComponentAnalysisResponse>('fast_model', 1500, prompt, componentAnalysisSchema)
 
   const perComponent: Record<ChatComponent, string> = {} as Record<ChatComponent, string>
   const flaggedComponents: ChatComponent[] = []
 
-  for (const [comp, val] of Object.entries(message.components)) {
-    const v = val as { comment: string; flagged: boolean }
+  for (const [comp, v] of Object.entries(message.components)) {
     perComponent[comp as ChatComponent] = v.comment
     if (v.flagged) flaggedComponents.push(comp as ChatComponent)
   }
@@ -80,16 +112,11 @@ CHAT Component: ${COMPONENT_LABELS[component]}
 Individual reflections:
 ${responseText}${resolutionSection}
 
-Draft a 1-2 sentence group agreement in first-person plural (starting with "We...") that captures what this team has decided about ${COMPONENT_LABELS[component]}. Plain language, no jargon. Be specific to what they actually wrote — do not add things they didn't say.
+Draft a 1-2 sentence group agreement in first-person plural (starting with "We...") that captures what this team has decided about ${COMPONENT_LABELS[component]}. Plain language, no jargon. Be specific to what they actually wrote — do not add things they didn't say.`
 
-Respond with valid JSON only, no markdown. Escape any double quotes or newlines inside the agreement text so the JSON stays valid:
-{
-  "agreement": "..."
-}`
+  const message = await sendAiApiRequest<{ agreement: string }>('default_model', 300, prompt, agreementSchema)
 
-  const message = await sendAiApiRequest('default_model', 300, prompt)
-
-  return message.agreement as string
+  return message.agreement
 }
 
 export async function reviseAgreement(
@@ -107,17 +134,11 @@ Their current agreement:
 After discussing the tension, the team noted:
 "${resolutionNote}"
 
-Rewrite the agreement as 1-2 sentences in first-person plural (starting with "We...") so it reflects what the team has now decided. Keep what still holds from the current agreement and fold in the new decision. Plain language, no jargon. Be specific to what they actually wrote — do not add things they didn't say.
+Rewrite the agreement as 1-2 sentences in first-person plural (starting with "We...") so it reflects what the team has now decided. Keep what still holds from the current agreement and fold in the new decision. Plain language, no jargon. Be specific to what they actually wrote — do not add things they didn't say.`
 
-Respond with valid JSON only, no markdown. Escape any double quotes or newlines inside the agreement text so the JSON stays valid:
-{
-  "agreement": "..."
-}
-`
+  const message = await sendAiApiRequest<{ agreement: string }>('default_model', 300, prompt, agreementSchema)
 
-  const message = await sendAiApiRequest('default_model', 300, prompt)
-
-  return message.agreement as string
+  return message.agreement
 }
 
 export interface CheckinSummary {
@@ -158,26 +179,13 @@ ${checkinText}
 
 For each of the six CHAT components (object, subject, division_of_labor, rules, tools, community), do two things:
 1. Write a 2-3 sentence plain-language comment on whether the team is holding to what they agreed, or where tension has appeared since. Reference the original agreement vs. what members now report. Name the CHAT component. Do not tell the team what to do — only name the gap or the alignment. No jargon beyond the component name.
-2. Decide if this component should be FLAGGED (true/false). Flag it if there is a "very_off" rating, a divergence between members, or drift from the original agreement that the team should discuss.
+2. Decide if this component should be FLAGGED (true/false). Flag it if there is a "very_off" rating, a divergence between members, or drift from the original agreement that the team should discuss.`
 
-Respond with valid JSON only, no markdown:
-{
-  "components": {
-    "object": { "comment": "...", "flagged": true/false },
-    "subject": { "comment": "...", "flagged": true/false },
-    "division_of_labor": { "comment": "...", "flagged": true/false },
-    "rules": { "comment": "...", "flagged": true/false },
-    "tools": { "comment": "...", "flagged": true/false },
-    "community": { "comment": "...", "flagged": true/false }
-  }
-}`
-
-  const message = await sendAiApiRequest('fast_model', 1500, prompt)
+  const message = await sendAiApiRequest<ComponentAnalysisResponse>('fast_model', 1500, prompt, componentAnalysisSchema)
 
   const perComponent: Record<ChatComponent, string> = {} as Record<ChatComponent, string>
   const flaggedComponents: ChatComponent[] = []
-  for (const [comp, val] of Object.entries(message.components)) {
-    const v = val as { comment: string; flagged: boolean }
+  for (const [comp, v] of Object.entries(message.components)) {
     perComponent[comp as ChatComponent] = v.comment
     if (v.flagged) flaggedComponents.push(comp as ChatComponent)
   }
@@ -218,18 +226,12 @@ ${checkinText}
 
 Identify which CHAT components show tension — any "very_off" rating, OR divergence between members' ratings for the same component (one says aligned, another says very_off).
 
-Then write 2-4 short nudge bullets naming specific gaps without blame. Reference what was originally agreed vs. what members are now reporting. Do not tell them what to do. Each bullet is one plain sentence.
+Then write 2-4 short nudge bullets naming specific gaps without blame. Reference what was originally agreed vs. what members are now reporting. Do not tell them what to do. Each bullet is one plain sentence.`
 
-Respond with valid JSON only, no markdown:
-{
-  "flagged_components": ["component_name", ...],
-  "nudge_bullets": ["...", "...", "..."]
-}`
-
-  const message = await sendAiApiRequest('fast_model', 500, prompt)
+  const message = await sendAiApiRequest<{ flagged_components: ChatComponent[]; nudge_bullets: string[] }>('fast_model', 500, prompt, nudgeSchema)
 
   return {
-    flaggedComponents: message.flagged_components as ChatComponent[],
-    nudgeBullets: (message.nudge_bullets ?? [message.nudge].filter(Boolean)) as string[],
+    flaggedComponents: message.flagged_components,
+    nudgeBullets: message.nudge_bullets,
   }
 }

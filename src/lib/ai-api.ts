@@ -1,50 +1,36 @@
-import Anthropic, { APIError } from '@anthropic-ai/sdk'
+import Anthropic from '@anthropic-ai/sdk'
 
 export const supportedModels = {
   'fast_model': 'claude-haiku-4-5-20251001',
   'default_model': 'claude-sonnet-4-6'
 } as const
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-const MAX_RETRIES = 3
-const BASE_BACKOFF_MS = 500
+const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, maxRetries: 4 })
 
-function isRetryable(error: unknown): boolean {
-  if (!(error instanceof APIError)) return false
-  // Retry on connection issues (no status), rate limits, and server errors.
-  // 4xx errors (bad request, auth, not found, ...) won't succeed on replay.
-  return error.status === undefined || error.status === 429 || error.status >= 500
-}
-
-function delay(ms: number) {
-  return new Promise(resolve => setTimeout(resolve, ms))
-}
-
-export async function sendAiApiRequest(
+export async function sendAiApiRequest<T>(
   model: keyof typeof supportedModels,
   max_tokens: number,
   prompt: string,
-  attempt = 0
-) {
-  try {
-    const request = await client.messages.create({
-      model: supportedModels[model],
-      max_tokens,
-      messages: [{ role: 'user', content: prompt }],
-    })
+  schema: Record<string, unknown>
+): Promise<T> {
+  const response = await client.messages.create({
+    model: supportedModels[model],
+    max_tokens,
+    messages: [{ role: 'user', content: prompt }],
+    output_config: { format: { type: 'json_schema', schema } },
+  })
 
-    const raw = (request.content[0] as { type: string; text: string }).text
-    const text = raw.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim()
-    const parsed = JSON.parse(text)
-    return parsed
-  } catch (error) {
-    if (isRetryable(error) && attempt < MAX_RETRIES) {
-      const backoffMs = BASE_BACKOFF_MS * 2 ** attempt
-      console.warn(`AI API request failed (attempt ${attempt + 1}/${MAX_RETRIES}), retrying in ${backoffMs}ms:`, error)
-      await delay(backoffMs)
-      return sendAiApiRequest(model, max_tokens, prompt, attempt + 1)
-    }
-    console.error('Failed to send AI API request after retries exhausted or non-retryable error.', error)
-    throw new Error('Failed to send AI API request.', { cause: error })
+  if (response.stop_reason === 'refusal') {
+    throw new Error('AI request was refused.')
   }
+  if (response.stop_reason === 'max_tokens') {
+    throw new Error('AI response was truncated before completing (max_tokens reached).')
+  }
+
+  const text = response.content.find((b): b is Anthropic.TextBlock => b.type === 'text')
+  if (!text) {
+    throw new Error(`AI response contained no text (stop_reason: ${response.stop_reason}).`)
+  }
+
+  return JSON.parse(text.text) as T
 }
