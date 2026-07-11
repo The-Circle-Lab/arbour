@@ -18,10 +18,10 @@ export default function LandingPage() {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    if (loading) return
+    if (loading || submitting) return
     if (!user) { router.replace('/login'); return }
     if (memberships.length === 1) router.replace(`/${memberships[0].join_code}`)
-  }, [loading, user, memberships, router])
+  }, [loading, user, memberships, submitting, router])
 
   async function handleLogout() {
     await fetch('/api/auth/logout', { method: 'POST' })
@@ -54,7 +54,6 @@ export default function LandingPage() {
       router.push(`/${team.join_code}/lobby`)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Something went wrong.')
-    } finally {
       setSubmitting(false)
     }
   }
@@ -76,7 +75,6 @@ export default function LandingPage() {
       router.push(`/${member.joinCode}/lobby`)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Something went wrong.')
-    } finally {
       setSubmitting(false)
     }
   }
