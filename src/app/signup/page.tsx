@@ -10,12 +10,14 @@ export default function SignupPage() {
   const { refresh } = useSession()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [displayName, setDisplayName] = useState('')
+  const [pronouns, setPronouns] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
   async function handleSubmit(e: SubmitEvent) {
     e.preventDefault()
-    if (!email.trim() || !password) return setError('Please fill in all fields.')
+    if (!email.trim() || !password || !displayName.trim()) return setError('Please fill in all fields.')
     if (password.length < 8) return setError('Password must be at least 8 characters.')
     setLoading(true)
     setError('')
@@ -23,7 +25,7 @@ export default function SignupPage() {
       const res = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, displayName, pronouns }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Something went wrong.')
@@ -64,6 +66,24 @@ export default function SignupPage() {
             onChange={e => setPassword(e.target.value)}
             autoComplete="new-password"
           />
+          <input
+            className="border border-stone-300 rounded-lg px-4 py-3 text-stone-800 focus:outline-none focus:ring-2 focus:ring-green-600"
+            placeholder="Your name"
+            value={displayName}
+            onChange={e => setDisplayName(e.target.value)}
+            autoComplete="name"
+          />
+          <select
+            className="border border-stone-300 rounded-lg px-4 py-3 text-stone-800 bg-white focus:outline-none focus:ring-2 focus:ring-green-600"
+            value={pronouns}
+            onChange={e => setPronouns(e.target.value)}
+          >
+            <option value="">Pronouns (optional)</option>
+            <option value="she/her">She/Her</option>
+            <option value="he/him">He/Him</option>
+            <option value="they/them">They/Them</option>
+            <option value="prefer not to say">Prefer not to say</option>
+          </select>
           {error && <p className="text-red-500 text-sm">{error}</p>}
           <button
             type="submit"

@@ -8,8 +8,8 @@ export async function GET() {
     return NextResponse.json({ user: null, memberships: [] })
   }
 
-  const user = await queryOne<{ id: string; email: string }>(
-    'SELECT id, email FROM users WHERE id = $1',
+  const user = await queryOne<{ id: string; email: string; display_name: string; pronouns: string | null }>(
+    'SELECT id, email, display_name, pronouns FROM users WHERE id = $1',
     [userId]
   )
   if (!user) {
@@ -21,10 +21,8 @@ export async function GET() {
     team_id: string
     join_code: string
     team_name: string
-    display_name: string
-    pronouns: string | null
   }>(
-    `SELECT m.id AS member_id, m.team_id, t.join_code, t.name AS team_name, m.display_name, m.pronouns
+    `SELECT m.id AS member_id, m.team_id, t.join_code, t.name AS team_name
      FROM members m
      JOIN teams t ON t.id = m.team_id
      WHERE m.user_id = $1

@@ -43,9 +43,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ code: s
     component: string
     response_data: Record<string, unknown>
   }>(
-    `SELECT ir.member_id, m.display_name, ir.component, ir.response_data
+    `SELECT ir.member_id, u.display_name, ir.component, ir.response_data
      FROM individual_reflections ir
      JOIN members m ON m.id = ir.member_id
+     JOIN users u ON u.id = m.user_id
      WHERE m.team_id = $1
      ORDER BY m.joined_at, ir.component`,
     [teamId]

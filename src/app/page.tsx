@@ -12,8 +12,6 @@ export default function LandingPage() {
   const [mode, setMode] = useState<'home' | 'create' | 'join'>('home')
   const [teamName, setTeamName] = useState('')
   const [joinCode, setJoinCode] = useState('')
-  const [displayName, setDisplayName] = useState('')
-  const [pronouns, setPronouns] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
@@ -23,14 +21,8 @@ export default function LandingPage() {
     if (memberships.length === 1) router.replace(`/${memberships[0].join_code}`)
   }, [loading, user, memberships, submitting, router])
 
-  async function handleLogout() {
-    await fetch('/api/auth/logout', { method: 'POST' })
-    await refresh()
-    router.push('/login')
-  }
-
   async function handleCreate() {
-    if (!teamName.trim() || !displayName.trim()) return setError('Please fill in all fields.')
+    if (!teamName.trim()) return setError('Please fill in all fields.')
     setSubmitting(true)
     setError('')
     try {
@@ -42,11 +34,7 @@ export default function LandingPage() {
       const team = await teamRes.json()
       if (!teamRes.ok) throw new Error(team.error)
 
-      const joinRes = await fetch(`/api/teams/${team.join_code}/join`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ displayName, pronouns }),
-      })
+      const joinRes = await fetch(`/api/teams/${team.join_code}/join`, { method: 'POST' })
       const member = await joinRes.json()
       if (!joinRes.ok) throw new Error(member.error)
 
@@ -59,15 +47,11 @@ export default function LandingPage() {
   }
 
   async function handleJoin() {
-    if (!joinCode.trim() || !displayName.trim()) return setError('Please fill in all fields.')
+    if (!joinCode.trim()) return setError('Please fill in all fields.')
     setSubmitting(true)
     setError('')
     try {
-      const joinRes = await fetch(`/api/teams/${joinCode.toUpperCase()}/join`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ displayName, pronouns }),
-      })
+      const joinRes = await fetch(`/api/teams/${joinCode.toUpperCase()}/join`, { method: 'POST' })
       const member = await joinRes.json()
       if (!joinRes.ok) throw new Error(member.error)
 
@@ -93,15 +77,6 @@ export default function LandingPage() {
   return (
     <main className="min-h-screen bg-stone-50 flex items-center justify-center p-6">
       <div className="w-full max-w-md">
-
-        <div className="flex items-center justify-between mb-6">
-          <span className="text-xs text-stone-400">
-            Logged in as <span className="font-medium text-stone-600">{user.email}</span>
-          </span>
-          <button onClick={handleLogout} className="text-xs text-stone-400 hover:text-stone-600 underline">
-            Log out
-          </button>
-        </div>
 
         {memberships.length > 0 && (
           <div className="bg-white rounded-2xl border border-stone-100 shadow-sm p-5 mb-6">
@@ -179,23 +154,6 @@ export default function LandingPage() {
               value={teamName}
               onChange={e => setTeamName(e.target.value)}
             />
-            <input
-              className="border border-stone-300 rounded-lg px-4 py-3 text-stone-800 focus:outline-none focus:ring-2 focus:ring-green-600"
-              placeholder="Your name"
-              value={displayName}
-              onChange={e => setDisplayName(e.target.value)}
-            />
-            <select
-              className="border border-stone-300 rounded-lg px-4 py-3 text-stone-800 bg-white focus:outline-none focus:ring-2 focus:ring-green-600"
-              value={pronouns}
-              onChange={e => setPronouns(e.target.value)}
-            >
-              <option value="">Pronouns (optional)</option>
-              <option value="she/her">She/Her</option>
-              <option value="he/him">He/Him</option>
-              <option value="they/them">They/Them</option>
-              <option value="prefer not to say">Prefer not to say</option>
-            </select>
             {error && <p className="text-red-500 text-sm">{error}</p>}
             <button
               onClick={handleCreate}
@@ -223,23 +181,6 @@ export default function LandingPage() {
               onChange={e => setJoinCode(e.target.value.toUpperCase())}
               maxLength={6}
             />
-            <input
-              className="border border-stone-300 rounded-lg px-4 py-3 text-stone-800 focus:outline-none focus:ring-2 focus:ring-green-600"
-              placeholder="Your name"
-              value={displayName}
-              onChange={e => setDisplayName(e.target.value)}
-            />
-            <select
-              className="border border-stone-300 rounded-lg px-4 py-3 text-stone-800 bg-white focus:outline-none focus:ring-2 focus:ring-green-600"
-              value={pronouns}
-              onChange={e => setPronouns(e.target.value)}
-            >
-              <option value="">Pronouns (optional)</option>
-              <option value="she/her">She/Her</option>
-              <option value="he/him">He/Him</option>
-              <option value="they/them">They/Them</option>
-              <option value="prefer not to say">Prefer not to say</option>
-            </select>
             {error && <p className="text-red-500 text-sm">{error}</p>}
             <button
               onClick={handleJoin}

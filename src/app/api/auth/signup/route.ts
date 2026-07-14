@@ -7,7 +7,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const UNIQUE_VIOLATION = '23505'
 
 export async function POST(req: Request) {
-  const { email, password } = await req.json()
+  const { email, password, displayName, pronouns } = await req.json()
 
   const normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : ''
   if (!EMAIL_RE.test(normalizedEmail)) {
@@ -15,6 +15,9 @@ export async function POST(req: Request) {
   }
   if (typeof password !== 'string' || password.length < 8) {
     return NextResponse.json({ error: 'Password must be at least 8 characters.' }, { status: 400 })
+  }
+  if (typeof displayName !== 'string' || !displayName.trim()) {
+    return NextResponse.json({ error: 'Name required.' }, { status: 400 })
   }
 
   const existing = await queryOne('SELECT id FROM users WHERE email = $1', [normalizedEmail])
@@ -27,8 +30,8 @@ export async function POST(req: Request) {
   let user: { id: string; email: string }
   try {
     const inserted = await queryOne<{ id: string; email: string }>(
-      'INSERT INTO users (email, password_hash) VALUES ($1, $2) RETURNING id, email',
-      [normalizedEmail, passwordHash]
+      'INSERT INTO users (email, password_hash, display_name, pronouns) VALUES ($1, $2, $3, $4) RETURNING id, email',
+      [normalizedEmail, passwordHash, displayName.trim(), pronouns?.trim() || null]
     )
     if (!inserted) throw new Error('Insert returned no row')
     user = inserted

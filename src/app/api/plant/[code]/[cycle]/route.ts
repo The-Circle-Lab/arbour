@@ -51,9 +51,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ code: s
     component: string
     response_data: { rating?: string; ratings?: Record<string, string>; [key: string]: unknown }
   }>(
-    `SELECT ci.member_id, m.display_name, ci.component, ci.response_data
+    `SELECT ci.member_id, u.display_name, ci.component, ci.response_data
      FROM checkins ci
      JOIN members m ON m.id = ci.member_id
+     JOIN users u ON u.id = m.user_id
      WHERE m.team_id = $1 AND ci.cycle_number = $2`,
     [teamId, cycleNum]
   )

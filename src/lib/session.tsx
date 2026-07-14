@@ -5,6 +5,8 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 export interface SessionUser {
   id: string
   email: string
+  display_name: string
+  pronouns: string | null
 }
 
 export interface Membership {
@@ -12,8 +14,6 @@ export interface Membership {
   team_id: string
   join_code: string
   team_name: string
-  display_name: string
-  pronouns: string | null
 }
 
 interface SessionData {
