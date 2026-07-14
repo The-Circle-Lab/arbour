@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { queryOne } from '@/lib/db'
-import { verifyPassword } from '@/lib/auth/password'
+import { verifyPassword, DUMMY_HASH } from '@/lib/auth/password'
 import { signSessionToken, setSessionCookie } from '@/lib/auth/jwt'
 
 export async function POST(req: Request) {
@@ -15,12 +15,9 @@ export async function POST(req: Request) {
     'SELECT id, password_hash FROM users WHERE email = $1',
     [normalizedEmail]
   )
-  if (!user) {
-    return NextResponse.json({ error: 'Invalid email or password.' }, { status: 401 })
-  }
 
-  const valid = await verifyPassword(password, user.password_hash)
-  if (!valid) {
+  const valid = await verifyPassword(password, user?.password_hash ?? DUMMY_HASH)
+  if (!user || !valid) {
     return NextResponse.json({ error: 'Invalid email or password.' }, { status: 401 })
   }
 
