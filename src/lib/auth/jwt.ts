@@ -27,7 +27,7 @@ export async function signSessionToken(userId: string, tokenVersion: number): Pr
 
 export async function verifySessionToken(token: string): Promise<SessionPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, getSecretKey())
+    const { payload } = await jwtVerify(token, getSecretKey(), { algorithms: ['HS256'] })
     return typeof payload.userId === 'string' && typeof payload.tokenVersion === 'number'
       ? { userId: payload.userId, tokenVersion: payload.tokenVersion }
       : null
