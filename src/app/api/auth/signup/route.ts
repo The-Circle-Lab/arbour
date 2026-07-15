@@ -16,6 +16,9 @@ export async function POST(req: Request) {
   if (typeof password !== 'string' || password.length < 8) {
     return NextResponse.json({ error: 'Password must be at least 8 characters.' }, { status: 400 })
   }
+  if (new TextEncoder().encode(password).length > 72) {
+    return NextResponse.json({ error: 'Password must be 72 bytes or fewer.' }, { status: 400 })
+  }
   if (typeof displayName !== 'string' || !displayName.trim()) {
     return NextResponse.json({ error: 'Name required.' }, { status: 400 })
   }
