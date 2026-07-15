@@ -77,6 +77,14 @@ export default function CheckinAgreePage() {
     return () => clearInterval(interval)
   }, [code, loading, user, membership, cycleNum])
 
+  if (loading || !user || !membership) {
+    return (
+      <main className="min-h-screen bg-stone-50 flex items-center justify-center p-6">
+        <WaitingRoom message="Loading" subMessage="Just a moment" />
+      </main>
+    )
+  }
+
   const isCreator = members[0]?.id === membership?.member_id
   const creatorName = members[0]?.display_name ?? 'your teammate'
 

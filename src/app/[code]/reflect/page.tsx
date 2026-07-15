@@ -25,6 +25,14 @@ export default function ReflectPage() {
     if (!user || !membership) { router.replace('/'); return }
   }, [loading, user, membership, router])
 
+  if (loading || !user || !membership) {
+    return (
+      <main className="min-h-screen bg-stone-50 flex items-center justify-center p-6">
+        <WaitingRoom message="Loading" subMessage="Just a moment" />
+      </main>
+    )
+  }
+
   const currentComponent = CHAT_COMPONENTS[currentIdx]
   const questions = REFLECTION_QUESTIONS[currentComponent]
   const isLast = currentIdx === CHAT_COMPONENTS.length - 1
