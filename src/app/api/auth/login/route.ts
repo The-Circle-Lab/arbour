@@ -11,8 +11,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Invalid email or password.' }, { status: 401 })
   }
 
-  const user = await queryOne<{ id: string; password_hash: string }>(
-    'SELECT id, password_hash FROM users WHERE email = $1',
+  const user = await queryOne<{ id: string; password_hash: string; token_version: number }>(
+    'SELECT id, password_hash, token_version FROM users WHERE email = $1',
     [normalizedEmail]
   )
 
@@ -21,7 +21,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Invalid email or password.' }, { status: 401 })
   }
 
-  const token = await signSessionToken(user.id)
+  const token = await signSessionToken(user.id, user.token_version)
   await setSessionCookie(token)
 
   return NextResponse.json({ id: user.id, email: normalizedEmail })

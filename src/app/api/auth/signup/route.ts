@@ -27,10 +27,10 @@ export async function POST(req: Request) {
 
   const passwordHash = await hashPassword(password)
 
-  let user: { id: string; email: string }
+  let user: { id: string; email: string; token_version: number }
   try {
-    const inserted = await queryOne<{ id: string; email: string }>(
-      'INSERT INTO users (email, password_hash, display_name, pronouns) VALUES ($1, $2, $3, $4) RETURNING id, email',
+    const inserted = await queryOne<{ id: string; email: string; token_version: number }>(
+      'INSERT INTO users (email, password_hash, display_name, pronouns) VALUES ($1, $2, $3, $4) RETURNING id, email, token_version',
       [normalizedEmail, passwordHash, displayName.trim(), pronouns?.trim() || null]
     )
     if (!inserted) throw new Error('Insert returned no row')
@@ -42,7 +42,7 @@ export async function POST(req: Request) {
     throw e
   }
 
-  const token = await signSessionToken(user.id)
+  const token = await signSessionToken(user.id, user.token_version)
   await setSessionCookie(token)
 
   return NextResponse.json({ id: user.id, email: user.email }, { status: 201 })
