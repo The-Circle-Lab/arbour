@@ -1,16 +1,13 @@
 import { NextResponse } from 'next/server'
-import { queryOne } from '@/lib/db'
 import { getTeamStatus } from '@/lib/phase'
+import { requireTeamMember } from '@/lib/auth/team-access'
 
 export async function GET(_req: Request, { params }: { params: Promise<{ code: string }> }) {
   const { code } = await params
 
-  const team = await queryOne<{ id: string }>(
-    'SELECT id FROM teams WHERE join_code = $1',
-    [code.toUpperCase()]
-  )
-  if (!team) return NextResponse.json({ error: 'Team not found' }, { status: 404 })
+  const membership = await requireTeamMember(code)
+  if (!membership) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const status = await getTeamStatus(team.id)
+  const status = await getTeamStatus(membership.teamId)
   return NextResponse.json(status)
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { loadMember } from '@/lib/member-store'
+import { useSession, getMembership } from '@/lib/session'
 import { COMPONENT_LABELS, COMPONENT_DESCRIPTIONS, ChatComponent } from '@/lib/chat-components'
 import { WaitingRoom } from '@/components/WaitingRoom'
 
@@ -21,7 +21,8 @@ export default function CheckinAgreePage() {
   const { code, cycle } = useParams<{ code: string; cycle: string }>()
   const router = useRouter()
   const cycleNum = parseInt(cycle)
-  const [identity] = useState(() => loadMember())
+  const { loading, user, memberships } = useSession()
+  const membership = getMembership(memberships, code)
 
   const [teamId, setTeamId] = useState('')
   const [teamSize, setTeamSize] = useState(2)
@@ -37,13 +38,6 @@ export default function CheckinAgreePage() {
 
   const activeRef = useRef<ChatComponent | null>(null)
   const noteDirtyRef = useRef(false)
-
-  useEffect(() => {
-    if (!identity) { router.replace('/'); return }
-    loadAll()
-    const interval = setInterval(loadAll, 4000)
-    return () => clearInterval(interval)
-  }, [code, identity, cycleNum])
 
   async function loadAll() {
     const teamRes = await fetch(`/api/teams/${code.toUpperCase()}`)
@@ -75,7 +69,23 @@ export default function CheckinAgreePage() {
     setReady(true)
   }
 
-  const isCreator = members[0]?.id === identity?.memberId
+  useEffect(() => {
+    if (loading) return
+    if (!user || !membership) { router.replace('/'); return }
+    loadAll()
+    const interval = setInterval(loadAll, 4000)
+    return () => clearInterval(interval)
+  }, [code, loading, user, membership, cycleNum])
+
+  if (loading || !user || !membership) {
+    return (
+      <main className="min-h-screen bg-stone-50 flex items-center justify-center p-6">
+        <WaitingRoom message="Loading" subMessage="Just a moment" />
+      </main>
+    )
+  }
+
+  const isCreator = members[0]?.id === membership?.member_id
   const creatorName = members[0]?.display_name ?? 'your teammate'
 
   function approvalsFor(comp: string) {
@@ -92,7 +102,7 @@ export default function CheckinAgreePage() {
     await fetch('/api/checkin-agreements', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ teamId, component: active, cycleNumber: cycleNum, resolutionNote: note, memberId: identity!.memberId }),
+      body: JSON.stringify({ teamId, component: active, cycleNumber: cycleNum, resolutionNote: note, memberId: membership!.member_id }),
     })
     noteDirtyRef.current = false
     await loadAll()
@@ -104,7 +114,7 @@ export default function CheckinAgreePage() {
     await fetch('/api/agreements/approve', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ teamId, component: active, memberId: identity!.memberId }),
+      body: JSON.stringify({ teamId, component: active, memberId: membership!.member_id }),
     })
     await loadAll()
   }
@@ -114,7 +124,7 @@ export default function CheckinAgreePage() {
     await fetch('/api/agreements/approve', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ teamId, component: active, memberId: identity!.memberId }),
+      body: JSON.stringify({ teamId, component: active, memberId: membership!.member_id }),
     })
     await loadAll()
   }
@@ -153,7 +163,7 @@ export default function CheckinAgreePage() {
   }
 
   const ag = active ? agreements[active] : null
-  const myApproval = active ? approvalsFor(active).some(a => a.member_id === identity?.memberId) : false
+  const myApproval = active ? approvalsFor(active).some(a => a.member_id === membership?.member_id) : false
 
   return (
     <main className="min-h-screen bg-stone-50 p-4 md:p-8">

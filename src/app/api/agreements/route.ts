@@ -1,17 +1,17 @@
 import { NextResponse } from 'next/server'
-import { query, queryOne } from '@/lib/db'
+import { query } from '@/lib/db'
 import { generateAgreementDraft, MemberReflection } from '@/lib/ai'
 import { ChatComponent } from '@/lib/chat-components'
+import { requireOwnedMember, requireTeamMemberByTeamId } from '@/lib/auth/team-access'
 
 // POST: save resolution note and trigger AI draft generation
 export async function POST(req: Request) {
   const { teamId, component, resolutionNote, memberId } = await req.json()
 
-  const member = await queryOne<{ id: string }>(
-    'SELECT id FROM members WHERE id = $1 AND team_id = $2',
-    [memberId, teamId]
-  )
-  if (!member) return NextResponse.json({ error: 'Member not found' }, { status: 404 })
+  const owned = await requireOwnedMember(memberId)
+  if (!owned || owned.teamId !== teamId) {
+    return NextResponse.json({ error: 'Not authorized for this member' }, { status: 403 })
+  }
 
   // Fetch member reflections for AI draft
   const reflections = await query<{
@@ -20,9 +20,10 @@ export async function POST(req: Request) {
     component: string
     response_data: Record<string, unknown>
   }>(
-    `SELECT ir.member_id, m.display_name, ir.component, ir.response_data
+    `SELECT ir.member_id, u.display_name, ir.component, ir.response_data
      FROM individual_reflections ir
      JOIN members m ON m.id = ir.member_id
+     JOIN users u ON u.id = m.user_id
      WHERE m.team_id = $1 AND ir.component = $2
      ORDER BY m.joined_at`,
     [teamId, component]
@@ -60,6 +61,11 @@ export async function POST(req: Request) {
 export async function PATCH(req: Request) {
   const { teamId, component, finalText, memberId } = await req.json()
 
+  const owned = await requireOwnedMember(memberId)
+  if (!owned || owned.teamId !== teamId) {
+    return NextResponse.json({ error: 'Not authorized for this member' }, { status: 403 })
+  }
+
   await query(
     `UPDATE agreements SET final_text = $1, recorded_by = $2, updated_at = NOW()
      WHERE team_id = $3 AND component = $4`,
@@ -80,6 +86,9 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
   const teamId = searchParams.get('teamId')
   if (!teamId) return NextResponse.json({ error: 'teamId required' }, { status: 400 })
+
+  const membership = await requireTeamMemberByTeamId(teamId)
+  if (!membership) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const agreements = await query<{
     component: string

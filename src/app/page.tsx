@@ -1,23 +1,29 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { saveMember } from '@/lib/member-store'
 import { ArborLogo } from '@/components/ArborLogo'
+import { WaitingRoom } from '@/components/WaitingRoom'
+import { useSession } from '@/lib/session'
 
 export default function LandingPage() {
   const router = useRouter()
+  const { loading, user, memberships, refresh } = useSession()
   const [mode, setMode] = useState<'home' | 'create' | 'join'>('home')
   const [teamName, setTeamName] = useState('')
   const [joinCode, setJoinCode] = useState('')
-  const [displayName, setDisplayName] = useState('')
-  const [pronouns, setPronouns] = useState('')
-  const [loading, setLoading] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
+  useEffect(() => {
+    if (loading || submitting) return
+    if (!user) { router.replace('/login'); return }
+    if (memberships.length === 1) router.replace(`/${memberships[0].join_code}`)
+  }, [loading, user, memberships, submitting, router])
+
   async function handleCreate() {
-    if (!teamName.trim() || !displayName.trim()) return setError('Please fill in all fields.')
-    setLoading(true)
+    if (!teamName.trim()) return setError('Please fill in all fields.')
+    setSubmitting(true)
     setError('')
     try {
       const teamRes = await fetch('/api/teams', {
@@ -28,73 +34,98 @@ export default function LandingPage() {
       const team = await teamRes.json()
       if (!teamRes.ok) throw new Error(team.error)
 
-      const joinRes = await fetch(`/api/teams/${team.join_code}/join`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ displayName, pronouns }),
-      })
+      const joinRes = await fetch(`/api/teams/${team.join_code}/join`, { method: 'POST' })
       const member = await joinRes.json()
       if (!joinRes.ok) throw new Error(member.error)
 
-      saveMember({ memberId: member.id, displayName: member.display_name, teamId: team.id, joinCode: team.join_code })
+      await refresh()
       router.push(`/${team.join_code}/lobby`)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Something went wrong.')
-    } finally {
-      setLoading(false)
+      setSubmitting(false)
     }
   }
 
   async function handleJoin() {
-    if (!joinCode.trim() || !displayName.trim()) return setError('Please fill in all fields.')
-    setLoading(true)
+    if (!joinCode.trim()) return setError('Please fill in all fields.')
+    setSubmitting(true)
     setError('')
     try {
-      const joinRes = await fetch(`/api/teams/${joinCode.toUpperCase()}/join`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ displayName, pronouns }),
-      })
+      const joinRes = await fetch(`/api/teams/${joinCode.toUpperCase()}/join`, { method: 'POST' })
       const member = await joinRes.json()
       if (!joinRes.ok) throw new Error(member.error)
 
-      saveMember({ memberId: member.id, displayName: member.display_name, teamId: member.teamId, joinCode: member.joinCode })
+      await refresh()
       router.push(`/${member.joinCode}/lobby`)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Something went wrong.')
-    } finally {
-      setLoading(false)
+      setSubmitting(false)
     }
+  }
+
+  // Loading, not-yet-authenticated (Proxy redirects momentarily), or the
+  // single-team case (auto-redirecting into that team) all show the same
+  // waiting state rather than flashing the create/join UI underneath.
+  if (loading || !user || memberships.length === 1) {
+    return (
+      <main className="min-h-screen bg-stone-50 flex items-center justify-center p-6">
+        <WaitingRoom message="Loading" subMessage="Just a moment" />
+      </main>
+    )
   }
 
   return (
     <main className="min-h-screen bg-stone-50 flex items-center justify-center p-6">
       <div className="w-full max-w-md">
 
+        {memberships.length > 0 && (
+          <div className="bg-white rounded-2xl border border-stone-100 shadow-sm p-5 mb-6">
+            <p className="text-xs text-stone-400 uppercase tracking-wide font-medium mb-3">Your teams</p>
+            <div className="flex flex-col gap-2">
+              {memberships.map(m => (
+                <button
+                  key={m.member_id}
+                  onClick={() => router.push(`/${m.join_code}`)}
+                  className="flex items-center justify-between border border-stone-200 rounded-xl px-4 py-3 text-left hover:border-green-600 hover:bg-green-50 transition"
+                >
+                  <span className="text-stone-700 font-medium">{m.team_name}</span>
+                  <span className="text-xs font-mono text-stone-400 tracking-widest">{m.join_code}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {mode === 'home' && (
           <>
-            <div className="text-center mb-10">
-              <div className="flex justify-center mb-3">
-                <ArborLogo size={56} />
-              </div>
-              <h1 className="text-4xl font-bold text-stone-800 mb-2">Arbor</h1>
-              <p className="text-stone-500 text-sm mb-6">Team alignment, made visible.</p>
+            {memberships.length === 0 && (
+              <div className="text-center mb-10">
+                <div className="flex justify-center mb-3">
+                  <ArborLogo size={56} />
+                </div>
+                <h1 className="text-4xl font-bold text-stone-800 mb-2">Arbor</h1>
+                <p className="text-stone-500 text-sm mb-6">Team alignment, made visible.</p>
 
-              <div className="bg-white rounded-2xl border border-stone-100 shadow-sm p-5 text-left mb-8">
-                <p className="text-sm text-stone-600 leading-relaxed">
-                  Arbor helps teams get aligned before they start working. You each reflect privately on six areas of your collaboration, compare answers side-by-side, and write a shared agreement. As work progresses, short check-ins surface tension early, visualised as a plant that reflects your team's health.
-                </p>
-                <p className="text-sm text-stone-600 leading-relaxed mt-3">
-                  It's built on <span className="font-medium text-stone-800">Activity Theory</span>: a framework that maps collaboration across goals, roles, rules, tools, and community.
-                </p>
+                <div className="bg-white rounded-2xl border border-stone-100 shadow-sm p-5 text-left mb-8">
+                  <p className="text-sm text-stone-600 leading-relaxed">
+                    Arbor helps teams get aligned before they start working. You each reflect privately on six areas of your collaboration, compare answers side-by-side, and write a shared agreement. As work progresses, short check-ins surface tension early, visualised as a plant that reflects your team&apos;s health.
+                  </p>
+                  <p className="text-sm text-stone-600 leading-relaxed mt-3">
+                    It&apos;s built on <span className="font-medium text-stone-800">Activity Theory</span>: a framework that maps collaboration across goals, roles, rules, tools, and community.
+                  </p>
+                </div>
               </div>
-            </div>
+            )}
+
+            {memberships.length > 0 && (
+              <p className="text-center text-sm text-stone-500 mb-4">Or start something new:</p>
+            )}
 
             <div className="bg-amber-50 border border-amber-100 rounded-xl px-4 py-3 mb-1 text-sm text-amber-800">
               <span className="font-semibold">One person creates the team.</span> Share the code with your teammates and they join from this page.
             </div>
 
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-3 mt-4">
               <button
                 onClick={() => setMode('create')}
                 className="w-full bg-green-700 text-white rounded-xl py-4 text-lg font-medium hover:bg-green-800 transition"
@@ -123,30 +154,13 @@ export default function LandingPage() {
               value={teamName}
               onChange={e => setTeamName(e.target.value)}
             />
-            <input
-              className="border border-stone-300 rounded-lg px-4 py-3 text-stone-800 focus:outline-none focus:ring-2 focus:ring-green-600"
-              placeholder="Your name"
-              value={displayName}
-              onChange={e => setDisplayName(e.target.value)}
-            />
-            <select
-              className="border border-stone-300 rounded-lg px-4 py-3 text-stone-800 bg-white focus:outline-none focus:ring-2 focus:ring-green-600"
-              value={pronouns}
-              onChange={e => setPronouns(e.target.value)}
-            >
-              <option value="">Pronouns (optional)</option>
-              <option value="she/her">She/Her</option>
-              <option value="he/him">He/Him</option>
-              <option value="they/them">They/Them</option>
-              <option value="prefer not to say">Prefer not to say</option>
-            </select>
             {error && <p className="text-red-500 text-sm">{error}</p>}
             <button
               onClick={handleCreate}
-              disabled={loading}
+              disabled={submitting}
               className="w-full bg-green-700 text-white rounded-xl py-3 font-medium hover:bg-green-800 disabled:opacity-50 transition"
             >
-              {loading ? 'Creating…' : 'Create team'}
+              {submitting ? 'Creating…' : 'Create team'}
             </button>
             <button onClick={() => { setMode('home'); setError('') }} className="text-stone-400 text-sm text-center hover:underline">
               Back
@@ -167,30 +181,13 @@ export default function LandingPage() {
               onChange={e => setJoinCode(e.target.value.toUpperCase())}
               maxLength={6}
             />
-            <input
-              className="border border-stone-300 rounded-lg px-4 py-3 text-stone-800 focus:outline-none focus:ring-2 focus:ring-green-600"
-              placeholder="Your name"
-              value={displayName}
-              onChange={e => setDisplayName(e.target.value)}
-            />
-            <select
-              className="border border-stone-300 rounded-lg px-4 py-3 text-stone-800 bg-white focus:outline-none focus:ring-2 focus:ring-green-600"
-              value={pronouns}
-              onChange={e => setPronouns(e.target.value)}
-            >
-              <option value="">Pronouns (optional)</option>
-              <option value="she/her">She/Her</option>
-              <option value="he/him">He/Him</option>
-              <option value="they/them">They/Them</option>
-              <option value="prefer not to say">Prefer not to say</option>
-            </select>
             {error && <p className="text-red-500 text-sm">{error}</p>}
             <button
               onClick={handleJoin}
-              disabled={loading}
+              disabled={submitting}
               className="w-full bg-green-700 text-white rounded-xl py-3 font-medium hover:bg-green-800 disabled:opacity-50 transition"
             >
-              {loading ? 'Joining…' : 'Join team'}
+              {submitting ? 'Joining…' : 'Join team'}
             </button>
             <button onClick={() => { setMode('home'); setError('') }} className="text-stone-400 text-sm text-center hover:underline">
               Back

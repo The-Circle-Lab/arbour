@@ -2,20 +2,22 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { loadMember } from '@/lib/member-store'
+import { useSession, getMembership } from '@/lib/session'
 import { PlantVisual, PlantType } from '@/components/PlantVisual'
 
 export default function StartPage() {
   const { code } = useParams<{ code: string }>()
   const router = useRouter()
-  const identity = loadMember()
+  const { loading, user, memberships } = useSession()
+  const membership = getMembership(memberships, code)
   const [teamName, setTeamName] = useState('')
   const [nextCycle, setNextCycle] = useState<number | null>(null)
   const [done, setDone] = useState(false)
   const [plantType, setPlantType] = useState<PlantType>('default')
 
   useEffect(() => {
-    if (!identity) { router.replace('/'); return }
+    if (loading) return
+    if (!user || !membership) { router.replace('/'); return }
     fetch(`/api/teams/${code.toUpperCase()}`)
       .then(r => r.json())
       .then(d => {
@@ -26,7 +28,7 @@ export default function StartPage() {
         if (phase === 'CHECKIN_2' || phase === 'PLANT_2') setNextCycle(2)
         else setNextCycle(1)
       })
-  }, [code, identity, router])
+  }, [loading, user, membership, router, code])
 
   return (
     <main className="min-h-screen bg-green-700 flex items-center justify-center p-6">

@@ -52,6 +52,13 @@ cp secrets.example.json secrets.json
 # edit secrets.json and set the "password" field to match your local Postgres
 ```
 
+Generate a session secret for authentication and add it to `.env`:
+
+```bash
+openssl rand -base64 32
+# add the output to .env as SESSION_SECRET=<value>
+```
+
 Apply database migrations before running the app:
 
 ```bash
@@ -67,6 +74,8 @@ Run the app in development:
 ```bash
 npm run dev
 ```
+
+The app requires an account. Open http://localhost:3000/signup to create one before using the app.
 
 Helpful commands:
 

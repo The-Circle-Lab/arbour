@@ -25,3 +25,9 @@ export async function queryOne<T = unknown>(text: string, params?: unknown[]): P
   const rows = await query<T>(text, params)
   return rows[0] ?? null
 }
+
+export const UNIQUE_VIOLATION = '23505'
+
+export function isUniqueViolation(e: unknown): boolean {
+  return typeof e === 'object' && e !== null && (e as { code?: string }).code === UNIQUE_VIOLATION
+}
