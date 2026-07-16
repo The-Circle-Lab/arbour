@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server'
-import { queryOne } from '@/lib/db'
+import { queryOne, isUniqueViolation } from '@/lib/db'
 import { requireUser } from '@/lib/auth/jwt'
-
-const UNIQUE_VIOLATION = '23505'
 
 export async function POST(_req: Request, { params }: { params: Promise<{ code: string }> }) {
   const { code } = await params
@@ -40,8 +38,4 @@ export async function POST(_req: Request, { params }: { params: Promise<{ code: 
     )
     return NextResponse.json({ ...race, teamId: team.id, joinCode: code.toUpperCase() })
   }
-}
-
-function isUniqueViolation(e: unknown): boolean {
-  return typeof e === 'object' && e !== null && (e as { code?: string }).code === UNIQUE_VIOLATION
 }

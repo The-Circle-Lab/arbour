@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server'
-import { queryOne } from '@/lib/db'
+import { queryOne, isUniqueViolation } from '@/lib/db'
 import { hashPassword } from '@/lib/auth/password'
 import { signSessionToken, setSessionCookie } from '@/lib/auth/jwt'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-const UNIQUE_VIOLATION = '23505'
 
 export async function POST(req: Request) {
   const { email, password, displayName, pronouns } = await req.json()
@@ -49,8 +48,4 @@ export async function POST(req: Request) {
   await setSessionCookie(token)
 
   return NextResponse.json({ id: user.id, email: user.email }, { status: 201 })
-}
-
-function isUniqueViolation(e: unknown): boolean {
-  return typeof e === 'object' && e !== null && (e as { code?: string }).code === UNIQUE_VIOLATION
 }
