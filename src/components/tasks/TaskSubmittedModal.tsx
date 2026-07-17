@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { Modal } from '@/components/Modal'
 import { TaskSummary, TaskSubmission } from '@/lib/tasks-types'
 
@@ -29,6 +29,9 @@ export function TaskSubmittedModal({
   const [text, setText] = useState('')
   const [expanded, setExpanded] = useState(false)
   const [busy, setBusy] = useState(false)
+  const headingId = useId()
+  const fieldId = useId()
+  const summaryId = useId()
 
   const truncated = submission.summary.length > TRUNCATE_AT
   const shownSummary =
@@ -57,19 +60,21 @@ export function TaskSubmittedModal({
   }
 
   return (
-    <Modal open>
+    <Modal open labelledBy={headingId}>
       <div className="p-5">
         <p className="text-xs text-stone-400 uppercase tracking-wide font-medium mb-1">Task submitted</p>
-        <h2 className="text-lg font-bold text-stone-800">{task.title}</h2>
+        <h2 id={headingId} className="text-lg font-bold text-stone-800">{task.title}</h2>
         <p className="text-sm text-stone-500 mt-0.5">
           Submitted by {task.assignedTo.displayName} · {submittedLabel}
         </p>
 
         <div className="bg-stone-50 border border-stone-100 rounded-xl p-4 mt-4">
-          <p className="text-sm text-stone-700 whitespace-pre-wrap">{shownSummary}</p>
+          <p id={summaryId} className="text-sm text-stone-700 whitespace-pre-wrap">{shownSummary}</p>
           {truncated && (
             <button
               onClick={() => setExpanded(e => !e)}
+              aria-expanded={expanded}
+              aria-controls={summaryId}
               className="text-sm text-green-700 hover:underline mt-2"
             >
               {expanded ? 'Hide submission' : 'View submission'}
@@ -106,10 +111,11 @@ export function TaskSubmittedModal({
           </>
         ) : (
           <div className="mt-5">
-            <label className="block text-sm font-medium text-stone-700 mb-2">
+            <label htmlFor={fieldId} className="block text-sm font-medium text-stone-700 mb-2">
               {mode === 'declining' ? 'Why are you declining this?' : 'Your comment'}
             </label>
             <textarea
+              id={fieldId}
               className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm text-stone-800 resize-none focus:outline-none focus:ring-2 focus:ring-green-500"
               rows={4}
               autoFocus

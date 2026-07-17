@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { Modal } from '@/components/Modal'
 import { TaskSummary, TaskAction, TaskActionSuggestion, TeamMemberOption } from '@/lib/tasks-types'
 
@@ -41,6 +41,8 @@ export function DeadlineMissedModal({
   const [deadline, setDeadline] = useState('')
   const [memberId, setMemberId] = useState('')
   const [busy, setBusy] = useState(false)
+  const headingId = useId()
+  const promptId = useId()
 
   const today = todayISO()
   // Reassigning to whoever already missed it isn't a reassignment.
@@ -112,17 +114,17 @@ export function DeadlineMissedModal({
   }
 
   return (
-    <Modal open>
+    <Modal open labelledBy={headingId}>
       <div className="bg-amber-50 border-b border-amber-100 p-5">
         <p className="text-xs text-amber-700 uppercase tracking-wide font-semibold mb-1">Deadline missed</p>
-        <h2 className="text-lg font-bold text-stone-800">{task.title}</h2>
+        <h2 id={headingId} className="text-lg font-bold text-stone-800">{task.title}</h2>
         <p className="text-sm text-amber-800 mt-1">
           Assigned to {task.assignedTo.displayName} · {overdueDurationLabel}
         </p>
       </div>
 
       <div className="p-5">
-        <p className="text-sm font-medium text-stone-700 mb-3">What should happen next?</p>
+        <p id={promptId} className="text-sm font-medium text-stone-700 mb-3">What should happen next?</p>
 
         {visibleSuggestions.length > 0 && (
           <div className="flex flex-col gap-2 mb-3">
@@ -143,7 +145,7 @@ export function DeadlineMissedModal({
           </div>
         )}
 
-        <div className="flex flex-col gap-2">
+        <div role="radiogroup" aria-labelledby={promptId} className="flex flex-col gap-2">
           {option('extend', 'Extend deadline', task.deadline ? `Was due ${formatDate(task.deadline)}` : 'Give it more time')}
           {selected === 'extend' && (
             <div className="pl-4 pb-1">
@@ -152,6 +154,7 @@ export function DeadlineMissedModal({
                 min={today}
                 value={deadline}
                 disabled={busy}
+                aria-label="New due date"
                 onChange={e => setDeadline(e.target.value)}
                 className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm text-stone-800 focus:outline-none focus:ring-2 focus:ring-green-500"
               />
@@ -168,6 +171,7 @@ export function DeadlineMissedModal({
                 <select
                   value={memberId}
                   disabled={busy}
+                  aria-label="Reassign to"
                   onChange={e => setMemberId(e.target.value)}
                   className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm text-stone-800 focus:outline-none focus:ring-2 focus:ring-green-500"
                 >

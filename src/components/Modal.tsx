@@ -8,12 +8,15 @@ const FOCUSABLE =
 
 interface ModalProps {
   open: boolean
+  // id of the element that names this dialog. Required, so a modal can never
+  // reach a screen reader announced as just "dialog" with no context.
+  labelledBy: string
   // Omit to make the modal non-dismissible: no backdrop click, no Escape.
   onClose?: () => void
   children: ReactNode
 }
 
-export function Modal({ open, onClose, children }: ModalProps) {
+export function Modal({ open, labelledBy, onClose, children }: ModalProps) {
   const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -92,6 +95,7 @@ export function Modal({ open, onClose, children }: ModalProps) {
         ref={containerRef}
         role="dialog"
         aria-modal="true"
+        aria-labelledby={labelledBy}
         className="w-full max-w-md max-h-[90vh] overflow-y-auto bg-white rounded-2xl border border-stone-100 shadow-sm"
       >
         {children}
