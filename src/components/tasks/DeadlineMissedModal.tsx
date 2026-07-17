@@ -2,14 +2,16 @@
 
 import { useState } from 'react'
 import { Modal } from '@/components/Modal'
-import { TaskSummary, TeamMemberOption } from '@/lib/tasks-types'
-
-type Action = 'extend' | 'reassign' | 'ignore'
+import { TaskSummary, TaskAction, TaskActionSuggestion, TeamMemberOption } from '@/lib/tasks-types'
 
 interface DeadlineMissedModalProps {
   task: TaskSummary
   overdueDurationLabel: string
   members: TeamMemberOption[]
+  // Generated server-side with the deadline-passed event and delivered alongside
+  // it, so every member sees the same recommendation and nothing is fetched here.
+  // Absent or empty when the backend produced none — the options below stand alone.
+  suggestions?: TaskActionSuggestion[]
   onExtend: (newDeadline: string) => void | Promise<void>
   onReassign: (memberId: string) => void | Promise<void>
   onIgnore: () => void | Promise<void>
@@ -30,11 +32,12 @@ export function DeadlineMissedModal({
   task,
   overdueDurationLabel,
   members,
+  suggestions = [],
   onExtend,
   onReassign,
   onIgnore,
 }: DeadlineMissedModalProps) {
-  const [selected, setSelected] = useState<Action | null>(null)
+  const [selected, setSelected] = useState<TaskAction | null>(null)
   const [deadline, setDeadline] = useState('')
   const [memberId, setMemberId] = useState('')
   const [busy, setBusy] = useState(false)
@@ -42,6 +45,11 @@ export function DeadlineMissedModal({
   const today = todayISO()
   // Reassigning to whoever already missed it isn't a reassignment.
   const otherMembers = members.filter(m => m.id !== task.assignedTo.id)
+
+  // Drop suggestions whose action can't be carried out at all — recommending a
+  // reassign with nobody to reassign to is noise. The static Reassign option
+  // still renders below and says why it's unavailable.
+  const visibleSuggestions = suggestions.filter(s => s.action !== 'reassign' || otherMembers.length > 0)
 
   const canSubmit =
     selected === 'ignore' ||
@@ -57,6 +65,16 @@ export function DeadlineMissedModal({
           ? 'Dismiss'
           : 'Choose an option'
 
+  // Prefills are validated, not trusted: a suggestion naming a past date or
+  // someone not on the team selects the action and leaves the input to the user.
+  function applySuggestion(s: TaskActionSuggestion) {
+    setSelected(s.action)
+    if (s.prefill?.deadline && s.prefill.deadline >= today) setDeadline(s.prefill.deadline)
+    if (s.prefill?.memberId && otherMembers.some(m => m.id === s.prefill?.memberId)) {
+      setMemberId(s.prefill.memberId)
+    }
+  }
+
   async function handleSubmit() {
     if (busy || !canSubmit) return
     setBusy(true)
@@ -69,7 +87,7 @@ export function DeadlineMissedModal({
     }
   }
 
-  function option(action: Action, label: string, hint: string) {
+  function option(action: TaskAction, label: string, hint: string) {
     const active = selected === action
     return (
       <label
@@ -105,6 +123,25 @@ export function DeadlineMissedModal({
 
       <div className="p-5">
         <p className="text-sm font-medium text-stone-700 mb-3">What should happen next?</p>
+
+        {visibleSuggestions.length > 0 && (
+          <div className="flex flex-col gap-2 mb-3">
+            {visibleSuggestions.map(s => (
+              <button
+                key={s.id}
+                onClick={() => applySuggestion(s)}
+                disabled={busy}
+                className="w-full text-left bg-green-50 border border-green-200 rounded-xl p-4 hover:bg-green-100 disabled:opacity-40 transition"
+              >
+                <span className="inline-block text-[10px] uppercase tracking-wide font-semibold text-green-800 bg-green-100 border border-green-200 rounded px-1.5 py-0.5 mb-1.5">
+                  Suggested
+                </span>
+                <span className="block text-sm font-medium text-stone-800">{s.label}</span>
+                <span className="block text-xs text-stone-500 mt-0.5">{s.rationale}</span>
+              </button>
+            ))}
+          </div>
+        )}
 
         <div className="flex flex-col gap-2">
           {option('extend', 'Extend deadline', task.deadline ? `Was due ${formatDate(task.deadline)}` : 'Give it more time')}

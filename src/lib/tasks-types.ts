@@ -17,3 +17,15 @@ export interface TaskSubmission {
   summary: string
   submittedAt: string
 }
+
+export type TaskAction = 'extend' | 'reassign' | 'ignore'
+
+// An AI recommendation is a shortcut onto one of the static actions, never an
+// action of its own — so a slow or failed suggestion can't block anyone.
+export interface TaskActionSuggestion {
+  id: string
+  label: string
+  rationale: string
+  action: TaskAction
+  prefill?: { deadline?: string; memberId?: string }
+}

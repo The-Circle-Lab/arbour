@@ -3,7 +3,12 @@
 import { useState } from 'react'
 import { TaskSubmittedModal } from '@/components/tasks/TaskSubmittedModal'
 import { DeadlineMissedModal } from '@/components/tasks/DeadlineMissedModal'
-import { TaskSummary, TaskSubmission, TeamMemberOption } from '@/lib/tasks-types'
+import {
+  TaskSummary,
+  TaskSubmission,
+  TaskActionSuggestion,
+  TeamMemberOption,
+} from '@/lib/tasks-types'
 
 // Temporary harness so the modals are clickable before /[code]/tasks exists.
 // Delete once the real tasks page wires these components in.
@@ -48,18 +53,52 @@ const SHORT_SUBMISSION: TaskSubmission = {
   submittedAt: '2026-07-17T15:04:00Z',
 }
 
+// Arrives with the deadline-passed event, already generated. The real version is
+// produced server-side from the team's rules / division_of_labor agreement text.
+const FIXTURE_SUGGESTIONS: TaskActionSuggestion[] = [
+  {
+    id: 'suggestion-extend',
+    label: 'Extend to Friday and check in',
+    rationale: "Your team's rules agreement calls for a check-in when a deadline slips.",
+    action: 'extend',
+    prefill: { deadline: '2026-07-24' },
+  },
+  {
+    id: 'suggestion-reassign',
+    label: 'Hand it to Dan',
+    rationale: 'Your division of labour agreement puts analysis work with Dan.',
+    action: 'reassign',
+    prefill: { memberId: 'member-2' },
+  },
+]
+
 type DemoModal =
   | { kind: 'submitted'; submission: TaskSubmission }
-  | { kind: 'deadline_missed'; task: TaskSummary; members: TeamMemberOption[] }
+  | {
+      kind: 'deadline_missed'
+      task: TaskSummary
+      members: TeamMemberOption[]
+      suggestions: TaskActionSuggestion[]
+    }
   | null
 
 export default function TaskModalsDevPage() {
   const [modal, setModal] = useState<DemoModal>(null)
   const [log, setLog] = useState<{ id: string; text: string }[]>([])
+  const [noSuggestions, setNoSuggestions] = useState(false)
 
   function record(text: string) {
     setLog(l => [{ id: crypto.randomUUID(), text }, ...l])
     setModal(null)
+  }
+
+  function openOverdue(task: TaskSummary, members: TeamMemberOption[]) {
+    setModal({
+      kind: 'deadline_missed',
+      task,
+      members,
+      suggestions: noSuggestions ? [] : FIXTURE_SUGGESTIONS,
+    })
   }
 
   const primary = 'w-full bg-green-700 text-white rounded-xl py-3 font-medium hover:bg-green-800 transition'
@@ -80,16 +119,19 @@ export default function TaskModalsDevPage() {
         </button>
 
         <p className="text-xs text-stone-400 uppercase tracking-wide font-medium mt-2">Variant B — deadline missed</p>
-        <button
-          onClick={() => setModal({ kind: 'deadline_missed', task: OVERDUE_TASK, members: MEMBERS })}
-          className={primary}
-        >
+        <label className="flex items-center gap-2 text-sm text-stone-600">
+          <input
+            type="checkbox"
+            className="accent-green-700"
+            checked={noSuggestions}
+            onChange={e => setNoSuggestions(e.target.checked)}
+          />
+          Event carries no AI suggestions
+        </label>
+        <button onClick={() => openOverdue(OVERDUE_TASK, MEMBERS)} className={primary}>
           Overdue task
         </button>
-        <button
-          onClick={() => setModal({ kind: 'deadline_missed', task: SOLO_TASK, members: [MEMBERS[0]] })}
-          className={secondary}
-        >
+        <button onClick={() => openOverdue(SOLO_TASK, [MEMBERS[0]])} className={secondary}>
           Overdue, no other members (reassign empty)
         </button>
 
@@ -124,6 +166,7 @@ export default function TaskModalsDevPage() {
           task={modal.task}
           overdueDurationLabel="4 days overdue"
           members={modal.members}
+          suggestions={modal.suggestions}
           onExtend={date => record(`extend(${JSON.stringify(date)})`)}
           onReassign={id => record(`reassign(${JSON.stringify(id)})`)}
           onIgnore={() => record('ignore()')}
