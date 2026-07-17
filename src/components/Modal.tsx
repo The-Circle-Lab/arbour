@@ -18,6 +18,8 @@ interface ModalProps {
 
 export function Modal({ open, labelledBy, onClose, children }: ModalProps) {
   const containerRef = useRef<HTMLDivElement>(null)
+  // Whether the current press started on the backdrop, checked again on release.
+  const pressedBackdrop = useRef(false)
 
   useEffect(() => {
     if (!open) return
@@ -87,8 +89,14 @@ export function Modal({ open, labelledBy, onClose, children }: ModalProps) {
   return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6"
-      onClick={e => {
-        if (e.target === e.currentTarget) onClose?.()
+      onMouseDown={e => {
+        pressedBackdrop.current = e.target === e.currentTarget
+      }}
+      onMouseUp={e => {
+        // Close only when both the press and release land on the backdrop, so a
+        // drag that starts or ends inside the dialog never dismisses it.
+        if (pressedBackdrop.current && e.target === e.currentTarget) onClose?.()
+        pressedBackdrop.current = false
       }}
     >
       <div
