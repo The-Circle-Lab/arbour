@@ -6,6 +6,7 @@ import { computePlantState, CheckinRow } from '@/lib/plant-logic'
 import { generateCheckinComparison, CheckinSummary } from '@/lib/ai'
 import { ChatComponent } from '@/lib/chat-components'
 import { requireTeamMember } from '@/lib/auth/team-access'
+import { clearAgreementApprovals } from '@/lib/agreement-approvals'
 
 export async function GET(_req: Request, { params }: { params: Promise<{ code: string; cycle: string }> }) {
   const { code, cycle } = await params
@@ -103,12 +104,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ code: s
 
   // Flagged components are unsettled again — clear their approvals so the team
   // must re-agree on the updated wording before the cycle counts as resolved.
-  if (allFlagged.length > 0) {
-    await query(
-      'DELETE FROM agreement_approvals WHERE team_id = $1 AND component = ANY($2)',
-      [teamId, allFlagged]
-    )
-  }
+  await clearAgreementApprovals(teamId, allFlagged)
 
   return NextResponse.json({
     computed_state: plantResult.state,

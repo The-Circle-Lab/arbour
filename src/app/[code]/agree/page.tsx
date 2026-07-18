@@ -439,10 +439,10 @@ export default function AgreePage() {
         {allDone ? (
           <div className="flex flex-col gap-3">
             <button
-              onClick={() => router.push(`/${code}/plant-intro`)}
+              onClick={() => router.push(`/${code}/tasks`)}
               className="w-full bg-green-700 text-white rounded-xl py-4 text-lg font-medium hover:bg-green-800 transition"
             >
-              Meet your plant →
+              Set up tasks →
             </button>
             <button
               onClick={() => router.push(`/${code}/charter`)}

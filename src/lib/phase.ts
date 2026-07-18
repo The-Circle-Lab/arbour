@@ -1,10 +1,12 @@
 import { query } from './db'
 import { CHAT_COMPONENTS } from './chat-components'
+import { countTaskApprovals } from './task-approvals'
 
 export type Phase =
   | 'REFLECTING'
   | 'REVEAL'
   | 'AGREEING'
+  | 'TASKS'
   | 'CHECKIN_1'
   | 'PLANT_1'
   | 'CHECKIN_2'
@@ -17,6 +19,8 @@ interface TeamStatus {
   reflectionsSubmitted: number
   allReflected: boolean
   allAgreed: boolean
+  hasTasks: boolean
+  tasksApproved: boolean
   checkin1Submitted: number
   allCheckin1Done: boolean
   checkin2Submitted: number
@@ -64,6 +68,15 @@ export async function getTeamStatus(teamId: string): Promise<TeamStatus> {
   const approvalByComponent = new Map<string, number>()
   for (const r of agreedRows) approvalByComponent.set(r.component, r.approvals)
 
+  // Task list: one shared list per team, gated by team-wide (not per-task) approval.
+  const [{ task_count }] = await query<{ task_count: number }>(
+    'SELECT COUNT(*)::int AS task_count FROM tasks WHERE team_id = $1',
+    [teamId]
+  )
+  const taskApprovalCount = await countTaskApprovals(teamId)
+  const hasTasks = task_count > 0
+  const tasksApproved = hasTasks && taskApprovalCount >= team_size
+
   // Check-in counts (members who submitted all 6 components for a cycle)
   const checkin1Count = await countCheckinSubmissions(teamId, 1)
   const checkin2Count = await countCheckinSubmissions(teamId, 2)
@@ -94,7 +107,8 @@ export async function getTeamStatus(teamId: string): Promise<TeamStatus> {
   // Derive phase
   let phase: Phase = 'REFLECTING'
   if (allReflected) phase = 'REVEAL'
-  if (allAgreed) phase = 'CHECKIN_1'
+  if (allAgreed) phase = 'TASKS'
+  if (allAgreed && tasksApproved) phase = 'CHECKIN_1'
   if (checkin1Count >= team_size) phase = 'PLANT_1'
   if (checkin1Count >= team_size && plant1Resolved) phase = 'CHECKIN_2'
   if (checkin2Count >= team_size) phase = 'PLANT_2'
@@ -106,6 +120,8 @@ export async function getTeamStatus(teamId: string): Promise<TeamStatus> {
     reflectionsSubmitted,
     allReflected,
     allAgreed,
+    hasTasks,
+    tasksApproved,
     checkin1Submitted: checkin1Count,
     allCheckin1Done: checkin1Count >= team_size,
     checkin2Submitted: checkin2Count,

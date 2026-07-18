@@ -1,3 +1,4 @@
+import { validate as isUuid } from 'uuid'
 import { queryOne } from '@/lib/db'
 import { requireUser } from './jwt'
 
@@ -29,6 +30,8 @@ export async function requireTeamMember(code: string): Promise<TeamMembership | 
 }
 
 export async function requireTeamMemberByTeamId(teamId: string): Promise<TeamMembership | null> {
+  if (!isUuid(teamId)) return null // malformed id, not a real team — same "not found" response as a valid-but-unknown id
+
   const userId = await requireUser()
   if (!userId) return null
 
@@ -42,6 +45,8 @@ export async function requireTeamMemberByTeamId(teamId: string): Promise<TeamMem
 }
 
 export async function requireOwnedMember(memberId: string): Promise<OwnedMember | null> {
+  if (!isUuid(memberId)) return null
+
   const userId = await requireUser()
   if (!userId) return null
 

@@ -3,6 +3,7 @@ import { query } from '@/lib/db'
 import { generateAgreementDraft, MemberReflection } from '@/lib/ai'
 import { ChatComponent } from '@/lib/chat-components'
 import { requireOwnedMember, requireTeamMemberByTeamId } from '@/lib/auth/team-access'
+import { clearAgreementApprovals, listAgreementApprovals } from '@/lib/agreement-approvals'
 
 // POST: save resolution note and trigger AI draft generation
 export async function POST(req: Request) {
@@ -49,10 +50,7 @@ export async function POST(req: Request) {
   )
 
   // Clear existing approvals since draft changed
-  await query(
-    'DELETE FROM agreement_approvals WHERE team_id = $1 AND component = $2',
-    [teamId, component]
-  )
+  await clearAgreementApprovals(teamId, component)
 
   return NextResponse.json({ draftText })
 }
@@ -73,10 +71,7 @@ export async function PATCH(req: Request) {
   )
 
   // Clear approvals when text is edited
-  await query(
-    'DELETE FROM agreement_approvals WHERE team_id = $1 AND component = $2',
-    [teamId, component]
-  )
+  await clearAgreementApprovals(teamId, component)
 
   return NextResponse.json({ ok: true })
 }
@@ -101,10 +96,7 @@ export async function GET(req: Request) {
     [teamId]
   )
 
-  const approvals = await query<{ component: string; member_id: string }>(
-    'SELECT component, member_id FROM agreement_approvals WHERE team_id = $1',
-    [teamId]
-  )
+  const approvals = await listAgreementApprovals(teamId)
 
   return NextResponse.json({ agreements, approvals })
 }
