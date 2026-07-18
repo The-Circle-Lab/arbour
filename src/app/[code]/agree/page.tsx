@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useSession, getMembership } from '@/lib/session'
 import { CHAT_COMPONENTS, COMPONENT_LABELS, COMPONENT_DESCRIPTIONS, ChatComponent } from '@/lib/chat-components'
+import { WaitingRoom } from '@/components/WaitingRoom'
 
 interface Agreement {
   component: string
@@ -143,6 +144,14 @@ export default function AgreePage() {
     setEditDirty(false)
     editDirtyRef.current = false
   }, [activeComponent])
+
+  if (loading || !user || !membership) {
+    return (
+      <main className="min-h-screen bg-stone-50 flex items-center justify-center p-6">
+        <WaitingRoom message="Loading" subMessage="Just a moment" />
+      </main>
+    )
+  }
 
   async function handleSaveText() {
     if (!teamId || !editText.trim()) return

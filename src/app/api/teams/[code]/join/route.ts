@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { queryOne } from '@/lib/db'
+import { queryOne, isUniqueViolation } from '@/lib/db'
 import { requireUser } from '@/lib/auth/jwt'
 
 export async function POST(_req: Request, { params }: { params: Promise<{ code: string }> }) {
@@ -23,10 +23,19 @@ export async function POST(_req: Request, { params }: { params: Promise<{ code: 
     return NextResponse.json({ ...existing, teamId: team.id, joinCode: code.toUpperCase() })
   }
 
-  const member = await queryOne<{ id: string }>(
-    'INSERT INTO members (team_id, user_id) VALUES ($1, $2) RETURNING id',
-    [team.id, userId]
-  )
-
-  return NextResponse.json({ ...member, teamId: team.id, joinCode: code.toUpperCase() }, { status: 201 })
+  try {
+    const member = await queryOne<{ id: string }>(
+      'INSERT INTO members (team_id, user_id) VALUES ($1, $2) RETURNING id',
+      [team.id, userId]
+    )
+    return NextResponse.json({ ...member, teamId: team.id, joinCode: code.toUpperCase() }, { status: 201 })
+  } catch (e) {
+    if (!isUniqueViolation(e)) throw e
+    // Concurrent request already inserted this same membership — return it.
+    const race = await queryOne<{ id: string }>(
+      'SELECT id FROM members WHERE team_id = $1 AND user_id = $2',
+      [team.id, userId]
+    )
+    return NextResponse.json({ ...race, teamId: team.id, joinCode: code.toUpperCase() })
+  }
 }

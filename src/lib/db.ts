@@ -50,3 +50,9 @@ export async function withTransaction<T>(fn: (tx: TransactionQuery) => Promise<T
     client.release()
   }
 }
+
+export const UNIQUE_VIOLATION = '23505'
+
+export function isUniqueViolation(e: unknown): boolean {
+  return typeof e === 'object' && e !== null && (e as { code?: string }).code === UNIQUE_VIOLATION
+}
