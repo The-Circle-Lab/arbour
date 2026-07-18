@@ -23,7 +23,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (!membership) return NextResponse.json({ error: 'Not authorized for this team' }, { status: 403 })
 
   const titleProvided = title !== undefined
-  if (titleProvided && !title.trim()) {
+  if (titleProvided && (typeof title !== 'string' || !title.trim())) {
     return NextResponse.json({ error: 'Title cannot be empty' }, { status: 400 })
   }
   if (status !== undefined && !VALID_STATUSES.includes(status)) {
