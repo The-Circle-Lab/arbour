@@ -77,14 +77,6 @@ export default function TasksPage() {
     return true
   }
 
-  useEffect(() => {
-    if (loading) return
-    if (!user || !membership) { router.replace('/'); return }
-    loadAll()
-    const interval = setInterval(loadAll, 4000)
-    return () => clearInterval(interval)
-  }, [code, loading, user, membership])
-
   async function loadAll() {
     const teamRes = await fetch(`/api/teams/${code.toUpperCase()}`)
     if (!teamRes.ok) return
@@ -107,6 +99,15 @@ export default function TasksPage() {
       return next
     })
   }
+
+  useEffect(() => {
+    if (loading) return
+    if (!user || !membership) { router.replace('/'); return }
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- the actual trigger is loadAll's setDrafts(prev => ...) updater reading dirtyRef.current (to skip overwriting an in-progress edit), which the lint rule treats as impure. Declaring loadAll after this effect doesn't clear it — it just swaps this warning for react-hooks/immutability ("accessed before declared") on the same block, since the analyzer can no longer resolve the setDrafts call at all. agree/page.tsx's loadAll has no set-state-with-ref-read updater, which is why its otherwise-identical effect needs no suppression.
+    loadAll()
+    const interval = setInterval(loadAll, 4000)
+    return () => clearInterval(interval)
+  }, [code, loading, user, membership])
 
   async function handleGenerate() {
     if (!team) return
