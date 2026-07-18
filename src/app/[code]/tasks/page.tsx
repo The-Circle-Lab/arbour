@@ -137,12 +137,12 @@ export default function TasksPage() {
   async function handleSaveText(taskId: string) {
     const draft = drafts[taskId]
     if (!draft) return
-    await mutate(`/api/tasks/${taskId}`, {
+    const ok = await mutate(`/api/tasks/${taskId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ title: draft.title, description: draft.description }),
     })
-    dirtyRef.current.delete(taskId)
+    if (ok) dirtyRef.current.delete(taskId)
     await loadAll()
   }
 
