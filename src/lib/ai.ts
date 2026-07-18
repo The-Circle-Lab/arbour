@@ -235,3 +235,101 @@ Then write 2-4 short nudge bullets naming specific gaps without blame. Reference
     nudgeBullets: message.nudge_bullets,
   }
 }
+
+export interface TaskProjectContext {
+  title: string | null
+  brief: string | null
+  deadline: string | null
+}
+
+export interface TaskMemberInput {
+  id: string
+  displayName: string
+  subject: Record<string, unknown>
+  divisionOfLabor: Record<string, unknown>
+}
+
+export interface TaskSuggestion {
+  title: string
+  description: string
+  assigneeMemberId: string | null
+  deadline: string | null
+}
+
+function buildTaskSuggestionsSchema(memberIds: string[]) {
+  return {
+    type: 'object',
+    properties: {
+      tasks: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            title: { type: 'string' },
+            description: { type: 'string' },
+            assignee_member_id: { type: ['string', 'null'], enum: [...memberIds, null] },
+            deadline: { type: ['string', 'null'] },
+          },
+          required: ['title', 'description', 'assignee_member_id', 'deadline'],
+          additionalProperties: false,
+        },
+      },
+    },
+    required: ['tasks'],
+    additionalProperties: false,
+  }
+}
+
+export async function generateTaskSuggestions(
+  project: TaskProjectContext,
+  agreements: Partial<Record<ChatComponent, string>>,
+  members: TaskMemberInput[],
+): Promise<TaskSuggestion[]> {
+  const projectSection = [
+    project.title ? `Project title: ${project.title}` : '',
+    project.brief ? `Assignment brief: ${project.brief}` : '',
+    project.deadline ? `Team deadline: ${project.deadline}` : '',
+  ].filter(Boolean).join('\n') || 'No project details were provided.'
+
+  const agreementSection = (['object', 'division_of_labor'] as ChatComponent[])
+    .filter(c => agreements[c])
+    .map(c => `${COMPONENT_LABELS[c]}: ${agreements[c]}`)
+    .join('\n') || 'No agreement text available yet.'
+
+  const memberSection = members.map(m => {
+    const bits = [
+      m.subject.preferred_role ? `Preferred contributor style: ${Array.isArray(m.subject.preferred_role) ? (m.subject.preferred_role as string[]).join(', ') : m.subject.preferred_role}` : '',
+      m.divisionOfLabor.expected_role ? `Wants to lead: ${m.divisionOfLabor.expected_role}` : '',
+      m.divisionOfLabor.fair_split ? `Fair split preference: ${m.divisionOfLabor.fair_split}` : '',
+      m.divisionOfLabor.avoid ? `Wants to avoid: ${m.divisionOfLabor.avoid}` : '',
+    ].filter(Boolean).join('\n  ')
+    return `- ${m.displayName} (id: ${m.id})${bits ? `\n  ${bits}` : ''}`
+  }).join('\n')
+
+  const prompt = `You are helping a student team break their project into a concrete task list.
+
+${projectSection}
+
+What the team agreed on:
+${agreementSection}
+
+Team members and what they said about the role/contribution they want:
+${memberSection}
+
+Suggest 5 to 10 concrete tasks that would make progress on this project. For each task:
+- Give a short title and a 1-2 sentence description.
+- Suggest one owner by picking their id from the member list above, based on what they said about the role they want — leave assignee_member_id null if no member is a clear fit.
+- Suggest a deadline (YYYY-MM-DD) that falls on or before the team deadline if one was given; otherwise use your judgement based on the project timeline implied above, or leave it null if there's not enough information to guess.`
+
+  const schema = buildTaskSuggestionsSchema(members.map(m => m.id))
+  const message = await sendAiApiRequest<{
+    tasks: { title: string; description: string; assignee_member_id: string | null; deadline: string | null }[]
+  }>('default_model', 1800, prompt, schema)
+
+  return message.tasks.map(t => ({
+    title: t.title,
+    description: t.description,
+    assigneeMemberId: t.assignee_member_id,
+    deadline: t.deadline,
+  }))
+}

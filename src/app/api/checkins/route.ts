@@ -2,12 +2,20 @@ import { NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { CHAT_COMPONENTS } from '@/lib/chat-components'
 import { requireOwnedMember, requireTeamMemberByTeamId } from '@/lib/auth/team-access'
+import { getTeamStatus } from '@/lib/phase'
 
 export async function POST(req: Request) {
   const { memberId, cycleNumber, responses } = await req.json()
 
   const owned = await requireOwnedMember(memberId)
   if (!owned) return NextResponse.json({ error: 'Not authorized for this member' }, { status: 403 })
+
+  if (cycleNumber === 1) {
+    const status = await getTeamStatus(owned.teamId)
+    if (!status.tasksApproved) {
+      return NextResponse.json({ error: 'The task list must be approved before check-ins can be submitted' }, { status: 403 })
+    }
+  }
 
   for (const component of CHAT_COMPONENTS) {
     if (!responses[component]) continue

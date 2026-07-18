@@ -25,3 +25,28 @@ export async function queryOne<T = unknown>(text: string, params?: unknown[]): P
   const rows = await query<T>(text, params)
   return rows[0] ?? null
 }
+
+export interface TransactionQuery {
+  query: <T = unknown>(text: string, params?: unknown[]) => Promise<T[]>
+}
+
+export async function withTransaction<T>(fn: (tx: TransactionQuery) => Promise<T>): Promise<T> {
+  const client = await getPool().connect()
+  try {
+    await client.query('BEGIN')
+    const tx: TransactionQuery = {
+      query: async <R = unknown>(text: string, params?: unknown[]): Promise<R[]> => {
+        const res = await client.query(text, params)
+        return res.rows as R[]
+      },
+    }
+    const result = await fn(tx)
+    await client.query('COMMIT')
+    return result
+  } catch (err) {
+    await client.query('ROLLBACK')
+    throw err
+  } finally {
+    client.release()
+  }
+}

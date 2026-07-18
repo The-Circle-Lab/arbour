@@ -5,6 +5,7 @@ import { query, queryOne } from '@/lib/db'
 import { reviseAgreement } from '@/lib/ai'
 import { ChatComponent } from '@/lib/chat-components'
 import { requireOwnedMember } from '@/lib/auth/team-access'
+import { clearAgreementApprovals } from '@/lib/agreement-approvals'
 
 // POST: revise a flagged component's agreement using the check-in discussion.
 // Updates the agreement text (charter evolves), clears approvals so the team
@@ -35,10 +36,7 @@ export async function POST(req: Request) {
   )
 
   // Updated wording invalidates prior approvals — re-collect them.
-  await query(
-    'DELETE FROM agreement_approvals WHERE team_id = $1 AND component = $2',
-    [teamId, component]
-  )
+  await clearAgreementApprovals(teamId, component)
 
   // Record the discussion note for this cycle (surfaced in the charter view).
   await query(
