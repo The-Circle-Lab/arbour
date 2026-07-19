@@ -4,12 +4,14 @@ import { query, queryOne } from '@/lib/db'
 import { requireTeamMemberByTeamId } from '@/lib/auth/team-access'
 import { toDeadlineUtc } from '@/lib/dates'
 import { clearTaskApprovals } from '@/lib/task-approvals'
-
-const VALID_STATUSES = ['todo', 'in_progress', 'done']
+import { EDITABLE_STATUSES, type TaskStatus } from '@/lib/task-status'
 
 async function loadTask(id: string) {
   if (!isUuid(id)) return null // malformed id, not a real task — same "not found" response as a valid-but-unknown id
-  return queryOne<{ team_id: string }>('SELECT team_id FROM tasks WHERE id = $1', [id])
+  return queryOne<{ team_id: string; status: TaskStatus; assigned_to: string | null }>(
+    'SELECT team_id, status, assigned_to FROM tasks WHERE id = $1',
+    [id]
+  )
 }
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -26,7 +28,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (titleProvided && (typeof title !== 'string' || !title.trim())) {
     return NextResponse.json({ error: 'Title cannot be empty' }, { status: 400 })
   }
-  if (status !== undefined && !VALID_STATUSES.includes(status)) {
+  if (status !== undefined && !EDITABLE_STATUSES.includes(status)) {
     return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
   }
   if (assignedTo) {
@@ -36,6 +38,14 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const assignee = await queryOne('SELECT id FROM members WHERE id = $1 AND team_id = $2', [assignedTo, task.team_id])
     if (!assignee) return NextResponse.json({ error: 'assignedTo must be a member of this team' }, { status: 400 })
   }
+
+  // Reassigning a submitted task to someone else re-opens it for the new
+  // assignee — otherwise status stays 'submitted' forever and nothing else
+  // in the app ever lets the new assignee submit their own work for it.
+  const assignedToProvided = assignedTo !== undefined
+  const reopensOnReassign =
+    assignedToProvided && (assignedTo || null) !== task.assigned_to && task.status === 'submitted' && status === undefined
+  const effectiveStatus = reopensOnReassign ? 'todo' : (status ?? null)
 
   await query(
     `UPDATE tasks SET
@@ -52,10 +62,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       titleProvided ? title.trim() : null,
       description !== undefined,
       description ?? null,
-      status ?? null,
+      effectiveStatus,
       deadline !== undefined,
       toDeadlineUtc(deadline),
-      assignedTo !== undefined,
+      assignedToProvided,
       assignedTo || null,
     ]
   )

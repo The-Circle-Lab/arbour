@@ -439,7 +439,7 @@ export default function AgreePage() {
         {allDone ? (
           <div className="flex flex-col gap-3">
             <button
-              onClick={() => router.push(`/${code}/tasks`)}
+              onClick={() => router.push(`/${code}/create-tasks`)}
               className="w-full bg-green-700 text-white rounded-xl py-4 text-lg font-medium hover:bg-green-800 transition"
             >
               Set up tasks →

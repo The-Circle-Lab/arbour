@@ -4,6 +4,7 @@ import { query, queryOne } from '@/lib/db'
 import { requireTeamMember, requireTeamMemberByTeamId } from '@/lib/auth/team-access'
 import { toDeadlineUtc, formatDeadlineLocal } from '@/lib/dates'
 import { clearTaskApprovals, listTaskApprovers } from '@/lib/task-approvals'
+import type { TaskSubmission } from '@/lib/task-status'
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
@@ -24,12 +25,30 @@ export async function GET(req: Request) {
     created_by: string | null
     created_at: string
     updated_at: string
+    submissions: TaskSubmission[]
   }>(
     `SELECT t.id, t.title, t.description, t.status, t.deadline, t.assigned_to,
-            au.display_name AS assignee_display_name, t.created_by, t.created_at, t.updated_at
+            au.display_name AS assignee_display_name, t.created_by, t.created_at, t.updated_at,
+            COALESCE(s.submissions, '[]'::json) AS submissions
      FROM tasks t
      LEFT JOIN members am ON am.id = t.assigned_to
      LEFT JOIN users au ON au.id = am.user_id
+     LEFT JOIN LATERAL (
+       SELECT json_agg(
+         json_build_object(
+           'id', ts.id,
+           'submitted_by', ts.submitted_by,
+           'submitter_display_name', su.display_name,
+           'submitted_at', ts.submitted_at,
+           'content', ts.content,
+           'url', ts.url
+         ) ORDER BY ts.submitted_at DESC
+       ) AS submissions
+       FROM task_submissions ts
+       LEFT JOIN members sm ON sm.id = ts.submitted_by
+       LEFT JOIN users su ON su.id = sm.user_id
+       WHERE ts.task_id = t.id
+     ) s ON TRUE
      WHERE t.team_id = $1
      ORDER BY t.deadline ASC NULLS LAST, t.created_at ASC`,
     [membership.teamId]
