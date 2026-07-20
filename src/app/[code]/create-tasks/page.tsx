@@ -49,6 +49,8 @@ export default function TasksPage() {
   const [adding, setAdding] = useState(false)
   const [drafts, setDrafts] = useState<Record<string, { title: string; description: string }>>({})
   const dirtyRef = useRef<Set<string>>(new Set())
+  const [deadlineDrafts, setDeadlineDrafts] = useState<Record<string, { date: string; time: string }>>({})
+  const deadlineDirtyRef = useRef<Set<string>>(new Set())
   const [error, setError] = useState<string | null>(null)
 
   // Every mutation funnels through here instead of calling apiRequest directly,
@@ -83,6 +85,16 @@ export default function TasksPage() {
         for (const t of rows) {
           if (dirtyRef.current.has(t.id)) continue
           next[t.id] = { title: t.title, description: t.description ?? '' }
+        }
+        return next
+      })
+
+      setDeadlineDrafts(prev => {
+        const next = { ...prev }
+        for (const t of rows) {
+          if (deadlineDirtyRef.current.has(t.id)) continue
+          const [d, tm] = (t.deadline_local ?? '').split('T')
+          next[t.id] = { date: d ?? '', time: tm ?? DEFAULT_DEADLINE_TIME }
         }
         return next
       })
@@ -132,6 +144,24 @@ export default function TasksPage() {
       body: JSON.stringify({ title: draft.title, description: draft.description }),
     })
     if (ok) dirtyRef.current.delete(taskId)
+    await loadAll()
+  }
+
+  async function handleSaveDeadline(taskId: string) {
+    const draft = deadlineDrafts[taskId]
+    if (!draft) return
+    const task = tasks.find(t => t.id === taskId)
+    const newDeadline = draft.date ? `${draft.date}T${draft.time || DEFAULT_DEADLINE_TIME}` : null
+    if (newDeadline === (task?.deadline_local ?? null)) {
+      deadlineDirtyRef.current.delete(taskId)
+      return
+    }
+    const ok = await mutate(`/api/tasks/${taskId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ deadline: newDeadline }),
+    })
+    if (ok) deadlineDirtyRef.current.delete(taskId)
     await loadAll()
   }
 
@@ -232,7 +262,7 @@ export default function TasksPage() {
         <div className="flex flex-col gap-3 mb-5">
             {tasks.map(task => {
               const draft = drafts[task.id] ?? { title: task.title, description: task.description ?? '' }
-              const [deadlineDate, deadlineTime] = (task.deadline_local ?? '').split('T')
+              const deadlineDraft = deadlineDrafts[task.id] ?? { date: '', time: DEFAULT_DEADLINE_TIME }
               return (
                 <div key={task.id} className="bg-white rounded-2xl border border-stone-100 shadow-sm p-5">
                   <div className="flex items-start justify-between gap-3 mb-3">
@@ -287,22 +317,16 @@ export default function TasksPage() {
                       className={`text-xs border rounded-lg px-2 py-1.5 text-stone-600 focus:outline-none focus:ring-2 focus:ring-green-500 ${
                         task.deadline ? 'border-stone-200' : 'border-amber-300 bg-amber-50'
                       }`}
-                      value={deadlineDate ?? ''}
+                      value={deadlineDraft.date}
                       onChange={e => {
-                        // Native date/time inputs fire onChange on every keystroke,
-                        // reporting "" while a segment is only partially typed — not
-                        // just when the user deliberately clears the field. Only act
-                        // on a genuinely complete value here; a real clear is handled
-                        // on blur below, once typing has actually stopped.
-                        const newDate = e.target.value
-                        if (!newDate) return
-                        handleFieldPatch(task.id, { deadline: `${newDate}T${deadlineTime || DEFAULT_DEADLINE_TIME}` })
+                        // Buffer locally instead of PATCHing on every keystroke — a
+                        // controlled native date/time input reset mid-typing (from an
+                        // immediate save-and-refetch round trip) wipes out the
+                        // browser's in-progress segment buffer. Commit on blur instead.
+                        deadlineDirtyRef.current.add(task.id)
+                        setDeadlineDrafts(d => ({ ...d, [task.id]: { ...deadlineDraft, date: e.target.value } }))
                       }}
-                      onBlur={e => {
-                        if (!e.target.value && task.deadline) {
-                          handleFieldPatch(task.id, { deadline: null })
-                        }
-                      }}
+                      onBlur={() => handleSaveDeadline(task.id)}
                     />
 
                     <input
@@ -310,13 +334,13 @@ export default function TasksPage() {
                       className={`text-xs border rounded-lg px-2 py-1.5 text-stone-600 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-40 ${
                         task.deadline ? 'border-stone-200' : 'border-amber-300 bg-amber-50'
                       }`}
-                      value={deadlineTime ?? DEFAULT_DEADLINE_TIME}
-                      disabled={!deadlineDate}
+                      value={deadlineDraft.time}
+                      disabled={!deadlineDraft.date}
                       onChange={e => {
-                        // Same partial-typing guard as the date input above.
-                        if (!deadlineDate || !e.target.value) return
-                        handleFieldPatch(task.id, { deadline: `${deadlineDate}T${e.target.value}` })
+                        deadlineDirtyRef.current.add(task.id)
+                        setDeadlineDrafts(d => ({ ...d, [task.id]: { ...deadlineDraft, time: e.target.value } }))
                       }}
+                      onBlur={() => handleSaveDeadline(task.id)}
                     />
 
                     <select
