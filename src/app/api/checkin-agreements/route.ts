@@ -4,6 +4,8 @@ import { NextResponse } from 'next/server'
 import { query, queryOne } from '@/lib/db'
 import { reviseAgreement } from '@/lib/ai'
 import { ChatComponent } from '@/lib/chat-components'
+import { requireOwnedMember } from '@/lib/auth/team-access'
+import { clearAgreementApprovals } from '@/lib/agreement-approvals'
 
 // POST: revise a flagged component's agreement using the check-in discussion.
 // Updates the agreement text (charter evolves), clears approvals so the team
@@ -11,11 +13,10 @@ import { ChatComponent } from '@/lib/chat-components'
 export async function POST(req: Request) {
   const { teamId, component, cycleNumber, resolutionNote, memberId } = await req.json()
 
-  const member = await queryOne<{ id: string }>(
-    'SELECT id FROM members WHERE id = $1 AND team_id = $2',
-    [memberId, teamId]
-  )
-  if (!member) return NextResponse.json({ error: 'Member not found' }, { status: 404 })
+  const owned = await requireOwnedMember(memberId)
+  if (!owned || owned.teamId !== teamId) {
+    return NextResponse.json({ error: 'Not authorized for this member' }, { status: 403 })
+  }
 
   const current = await queryOne<{ final_text: string | null }>(
     'SELECT final_text FROM agreements WHERE team_id = $1 AND component = $2',
@@ -35,10 +36,7 @@ export async function POST(req: Request) {
   )
 
   // Updated wording invalidates prior approvals — re-collect them.
-  await query(
-    'DELETE FROM agreement_approvals WHERE team_id = $1 AND component = $2',
-    [teamId, component]
-  )
+  await clearAgreementApprovals(teamId, component)
 
   // Record the discussion note for this cycle (surfaced in the charter view).
   await query(

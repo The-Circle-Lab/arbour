@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { loadMember } from '@/lib/member-store'
+import { useSession, getMembership } from '@/lib/session'
 import { WaitingRoom } from '@/components/WaitingRoom'
 import type { Phase } from '@/lib/phase'
 
@@ -21,21 +21,19 @@ export default function TeamHub() {
   const params = useParams()
   const code = (params.code as string).toUpperCase()
 
+  const { loading, user, memberships } = useSession()
+  const membership = getMembership(memberships, code)
+
   const [team, setTeam] = useState<TeamData | null>(null)
-  const [identity, setIdentity] = useState<ReturnType<typeof loadMember>>(null)
   const [notMember, setNotMember] = useState(false)
 
   useEffect(() => {
-    const id = loadMember()
-    if (!id || id.joinCode !== code) {
-      router.replace('/')
-      return
-    }
-    setIdentity(id)
-  }, [code, router])
+    if (loading) return
+    if (!user || !membership) { router.replace('/'); return }
+  }, [loading, user, membership, router])
 
   useEffect(() => {
-    if (!identity) return
+    if (!membership) return
     const poll = async () => {
       try {
         const res = await fetch(`/api/teams/${code}`)
@@ -43,7 +41,7 @@ export default function TeamHub() {
         const data: TeamData = await res.json()
         setTeam(data)
 
-        const memberExists = data.members.some(m => m.id === identity.memberId)
+        const memberExists = data.members.some(m => m.id === membership.member_id)
         if (!memberExists) { setNotMember(true); return }
 
         const phase = data.status.phase
@@ -52,6 +50,7 @@ export default function TeamHub() {
         else if (phase === 'REFLECTING') router.push(`/${code}/reflect`)
         else if (phase === 'REVEAL') router.push(`/${code}/reveal`)
         else if (phase === 'AGREEING') router.push(`/${code}/agree`)
+        else if (phase === 'TASKS') router.push(`/${code}/create-tasks`)
         else if (phase === 'CHECKIN_1') router.push(`/${code}/checkin/1`)
         else if (phase === 'PLANT_1') router.push(`/${code}/plant/1`)
         else if (phase === 'CHECKIN_2') router.push(`/${code}/checkin-intro`)
@@ -63,7 +62,7 @@ export default function TeamHub() {
     poll()
     const interval = setInterval(poll, 4000)
     return () => clearInterval(interval)
-  }, [identity, code, router])
+  }, [membership, code, router])
 
   if (notMember) return (
     <main className="min-h-screen flex items-center justify-center">

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { loadMember } from '@/lib/member-store'
+import { useSession, getMembership } from '@/lib/session'
 import { PlantVisual, PlantState, PlantType } from '@/components/PlantVisual'
 import { WaitingRoom } from '@/components/WaitingRoom'
 import { COMPONENT_LABELS, ChatComponent } from '@/lib/chat-components'
@@ -16,7 +16,8 @@ interface PlantData {
 export default function PlantPage() {
   const { code, cycle } = useParams<{ code: string; cycle: string }>()
   const router = useRouter()
-  const identity = loadMember()
+  const { loading, user, memberships } = useSession()
+  const membership = getMembership(memberships, code)
   const cycleNum = parseInt(cycle)
 
   const [plantData, setPlantData] = useState<PlantData | null>(null)
@@ -24,24 +25,26 @@ export default function PlantPage() {
   const [revealed, setRevealed] = useState(false)
 
   useEffect(() => {
-    if (!identity) { router.replace('/'); return }
+    if (loading) return
+    if (!user || !membership) { router.replace('/'); return }
+
+    async function loadAll() {
+      const teamRes = await fetch(`/api/teams/${code.toUpperCase()}`)
+      if (!teamRes.ok) return
+      const teamData = await teamRes.json()
+      if (teamData.plant_type) setPlantType(teamData.plant_type as PlantType)
+
+      const plantRes = await fetch(`/api/plant/${code.toUpperCase()}/${cycleNum}`)
+      if (plantRes.ok) {
+        const data = await plantRes.json()
+        if (data.computed_state) setPlantData(data)
+      }
+    }
+
     loadAll()
     const interval = setInterval(loadAll, 4000)
     return () => clearInterval(interval)
-  }, [code, identity, cycleNum])
-
-  async function loadAll() {
-    const teamRes = await fetch(`/api/teams/${code.toUpperCase()}`)
-    if (!teamRes.ok) return
-    const teamData = await teamRes.json()
-    if (teamData.plant_type) setPlantType(teamData.plant_type as PlantType)
-
-    const plantRes = await fetch(`/api/plant/${code.toUpperCase()}/${cycleNum}`)
-    if (plantRes.ok) {
-      const data = await plantRes.json()
-      if (data.computed_state) setPlantData(data)
-    }
-  }
+  }, [loading, user, membership, code, cycleNum])
 
   // No tensions: let the team see the healthy plant, then move on.
   useEffect(() => {

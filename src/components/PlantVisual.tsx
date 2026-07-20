@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 
 export type PlantState = 'thriving' | 'doing_okay' | 'wilting' | 'dead'
 export type PlantType = 'default' | 'cactus' | 'flower' | 'tree'
+export const PLANT_TYPES: PlantType[] = ['default', 'cactus', 'flower', 'tree']
 
 interface Props {
   state: PlantState

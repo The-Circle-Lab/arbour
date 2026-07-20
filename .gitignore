@@ -42,3 +42,5 @@ secrets.json
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+docker-compose.yml

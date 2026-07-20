@@ -5,16 +5,16 @@ import { query, queryOne } from '@/lib/db'
 import { computePlantState, CheckinRow } from '@/lib/plant-logic'
 import { generateCheckinComparison, CheckinSummary } from '@/lib/ai'
 import { ChatComponent } from '@/lib/chat-components'
+import { requireTeamMember } from '@/lib/auth/team-access'
+import { clearAgreementApprovals } from '@/lib/agreement-approvals'
 
 export async function GET(_req: Request, { params }: { params: Promise<{ code: string; cycle: string }> }) {
   const { code, cycle } = await params
   const cycleNum = parseInt(cycle)
 
-  const team = await queryOne<{ id: string }>(
-    'SELECT id FROM teams WHERE join_code = $1',
-    [code.toUpperCase()]
-  )
-  if (!team) return NextResponse.json({ error: 'Team not found' }, { status: 404 })
+  const membership = await requireTeamMember(code)
+  if (!membership) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  const teamId = membership.teamId
 
   // Return cached
   const cached = await queryOne<{
@@ -24,14 +24,14 @@ export async function GET(_req: Request, { params }: { params: Promise<{ code: s
     per_component: Record<string, string>
   }>(
     'SELECT computed_state, flagged_components, ai_nudge_text, per_component FROM plant_states WHERE team_id = $1 AND cycle_number = $2',
-    [team.id, cycleNum]
+    [teamId, cycleNum]
   )
   if (cached) return NextResponse.json(cached)
 
   // Check all members submitted
   const [{ team_size }] = await query<{ team_size: number }>(
     'SELECT COUNT(*)::int AS team_size FROM members WHERE team_id = $1',
-    [team.id]
+    [teamId]
   )
 
   const submittedRows = await query<{ member_id: string; count: number }>(
@@ -40,7 +40,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ code: s
      JOIN members m ON m.id = ci.member_id
      WHERE m.team_id = $1 AND ci.cycle_number = $2
      GROUP BY ci.member_id`,
-    [team.id, cycleNum]
+    [teamId, cycleNum]
   )
   const allSubmitted = submittedRows.filter(r => r.count >= 6).length >= team_size
   if (!allSubmitted) return NextResponse.json({ ready: false }, { status: 202 })
@@ -52,11 +52,12 @@ export async function GET(_req: Request, { params }: { params: Promise<{ code: s
     component: string
     response_data: { rating?: string; ratings?: Record<string, string>; [key: string]: unknown }
   }>(
-    `SELECT ci.member_id, m.display_name, ci.component, ci.response_data
+    `SELECT ci.member_id, u.display_name, ci.component, ci.response_data
      FROM checkins ci
      JOIN members m ON m.id = ci.member_id
+     JOIN users u ON u.id = m.user_id
      WHERE m.team_id = $1 AND ci.cycle_number = $2`,
-    [team.id, cycleNum]
+    [teamId, cycleNum]
   )
 
   const plantResult = computePlantState(checkinRows as CheckinRow[], team_size)
@@ -64,7 +65,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ code: s
   // Fetch agreements for nudge context
   const agreementRows = await query<{ component: string; final_text: string }>(
     'SELECT component, final_text FROM agreements WHERE team_id = $1 AND final_text IS NOT NULL',
-    [team.id]
+    [teamId]
   )
   const agreements: Record<ChatComponent, string> = {} as Record<ChatComponent, string>
   for (const r of agreementRows) agreements[r.component as ChatComponent] = r.final_text
@@ -98,17 +99,12 @@ export async function GET(_req: Request, { params }: { params: Promise<{ code: s
     `INSERT INTO plant_states (team_id, cycle_number, computed_state, flagged_components, ai_nudge_text, per_component)
      VALUES ($1, $2, $3, $4, $5, $6)
      ON CONFLICT (team_id, cycle_number) DO NOTHING`,
-    [team.id, cycleNum, plantResult.state, allFlagged, null, JSON.stringify(comparison.perComponent)]
+    [teamId, cycleNum, plantResult.state, allFlagged, null, JSON.stringify(comparison.perComponent)]
   )
 
   // Flagged components are unsettled again — clear their approvals so the team
   // must re-agree on the updated wording before the cycle counts as resolved.
-  if (allFlagged.length > 0) {
-    await query(
-      'DELETE FROM agreement_approvals WHERE team_id = $1 AND component = ANY($2)',
-      [team.id, allFlagged]
-    )
-  }
+  await clearAgreementApprovals(teamId, allFlagged)
 
   return NextResponse.json({
     computed_state: plantResult.state,

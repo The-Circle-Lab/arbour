@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import { query, queryOne } from '@/lib/db'
+import { requireUser } from '@/lib/auth/jwt'
+import { requireOwnedMember, requireTeamMemberByTeamId } from '@/lib/auth/team-access'
 
 function randomCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
@@ -8,6 +10,9 @@ function randomCode(): string {
 
 export async function POST(req: Request) {
   try {
+    const userId = await requireUser()
+    if (!userId) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+
     const { name } = await req.json()
     if (!name?.trim()) return NextResponse.json({ error: 'Name required' }, { status: 400 })
 
@@ -40,6 +45,11 @@ export async function PATCH(req: Request) {
     if (plantVote) {
       const { memberId, plantType } = plantVote as { memberId: string; plantType: string }
 
+      const owned = await requireOwnedMember(memberId)
+      if (!owned || owned.teamId !== teamId) {
+        return NextResponse.json({ error: 'Not authorized for this member' }, { status: 403 })
+      }
+
       // Load current votes
       const team = await queryOne<{ plant_votes: Record<string, string> | null }>(
         'SELECT plant_votes FROM teams WHERE id = $1', [teamId]
@@ -64,6 +74,11 @@ export async function PATCH(req: Request) {
       }
 
       return NextResponse.json({ ok: true, agreed, votes, plantType: agreed ? plantType : null })
+    }
+
+    const membership = await requireTeamMemberByTeamId(teamId)
+    if (!membership) {
+      return NextResponse.json({ error: 'Not authorized for this team' }, { status: 403 })
     }
 
     await query(

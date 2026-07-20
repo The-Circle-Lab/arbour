@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { loadMember } from '@/lib/member-store'
+import { useSession, getMembership } from '@/lib/session'
 import { CHAT_COMPONENTS, COMPONENT_LABELS, COMPONENT_DESCRIPTIONS, REFLECTION_QUESTIONS, ChatComponent } from '@/lib/chat-components'
 import { WaitingRoom } from '@/components/WaitingRoom'
 import { ArborLogo } from '@/components/ArborLogo'
@@ -12,7 +12,8 @@ type Responses = Record<ChatComponent, Record<string, string | string[] | Record
 export default function ReflectPage() {
   const { code } = useParams<{ code: string }>()
   const router = useRouter()
-  const identity = loadMember()
+  const { loading, user, memberships } = useSession()
+  const membership = getMembership(memberships, code)
 
   const [responses, setResponses] = useState<Partial<Responses>>({})
   const [currentIdx, setCurrentIdx] = useState(0)
@@ -20,8 +21,17 @@ export default function ReflectPage() {
   const [submitted, setSubmitted] = useState(false)
 
   useEffect(() => {
-    if (!identity) { router.replace('/'); return }
-  }, [identity, router])
+    if (loading) return
+    if (!user || !membership) { router.replace('/'); return }
+  }, [loading, user, membership, router])
+
+  if (loading || !user || !membership) {
+    return (
+      <main className="min-h-screen bg-stone-50 flex items-center justify-center p-6">
+        <WaitingRoom message="Loading" subMessage="Just a moment" />
+      </main>
+    )
+  }
 
   const currentComponent = CHAT_COMPONENTS[currentIdx]
   const questions = REFLECTION_QUESTIONS[currentComponent]
@@ -65,7 +75,7 @@ export default function ReflectPage() {
       await fetch('/api/reflections', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ memberId: identity!.memberId, responses }),
+        body: JSON.stringify({ memberId: membership!.member_id, responses }),
       })
       setSubmitted(true)
     } finally {

@@ -23,7 +23,7 @@ try {
 
 const args = ['node-pg-migrate', cmd, '-m', 'migrations', '-j', 'ts', '--ts-node']
 const env = { ...process.env, DATABASE_URL: dbUrl }
-const res = spawnSync('npx', args, { stdio: 'inherit', env })
+const res = spawnSync('npx', args, { stdio: 'inherit', env, shell: process.platform === 'win32' })
 if (res.error) {
   console.error(`Failed to launch migration command: ${res.error.message}`)
   process.exit(1)

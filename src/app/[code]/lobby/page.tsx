@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { loadMember } from '@/lib/member-store'
+import { useSession, getMembership } from '@/lib/session'
 import { ArborLogo } from '@/components/ArborLogo'
 
 interface Member {
@@ -14,7 +14,8 @@ interface Member {
 export default function LobbyPage() {
   const { code } = useParams<{ code: string }>()
   const router = useRouter()
-  const identity = loadMember()
+  const { loading, user, memberships } = useSession()
+  const membership = getMembership(memberships, code)
 
   const [teamName, setTeamName] = useState('')
   const [teamId, setTeamId] = useState('')
@@ -27,7 +28,8 @@ export default function LobbyPage() {
   const [briefSaving, setBriefSaving] = useState(false)
 
   useEffect(() => {
-    if (!identity) { router.replace('/'); return }
+    if (loading) return
+    if (!user || !membership) { router.replace('/'); return }
     const poll = async () => {
       const res = await fetch(`/api/teams/${code.toUpperCase()}`)
       if (!res.ok) return
@@ -42,7 +44,7 @@ export default function LobbyPage() {
     poll()
     const interval = setInterval(poll, 4000)
     return () => clearInterval(interval)
-  }, [code, identity, router])
+  }, [code, loading, user, membership, router])
 
   function copyCode() {
     navigator.clipboard.writeText(code.toUpperCase())
@@ -72,7 +74,7 @@ export default function LobbyPage() {
     setTimeout(() => setBriefSaved(false), 2000)
   }
 
-  const isCreator = members[0]?.id === identity?.memberId
+  const isCreator = members[0]?.id === membership?.member_id
 
   return (
     <main className="min-h-screen bg-stone-50 flex items-center justify-center p-6">
@@ -130,7 +132,7 @@ export default function LobbyPage() {
                 {m.pronouns && m.pronouns !== 'prefer not to say' && (
                   <span className="text-xs text-stone-400">{m.pronouns}</span>
                 )}
-                {m.id === identity?.memberId && (
+                {m.id === membership?.member_id && (
                   <span className="text-xs text-stone-400">(you)</span>
                 )}
               </div>
