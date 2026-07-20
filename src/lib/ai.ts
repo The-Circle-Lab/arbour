@@ -333,3 +333,123 @@ Suggest 5 to 10 concrete tasks that would make progress on this project. For eac
     deadline: t.deadline,
   }))
 }
+
+const submissionSummarySchema = {
+  type: 'object',
+  properties: { summary: { type: 'string' } },
+  required: ['summary'],
+  additionalProperties: false,
+}
+
+export async function generateSubmissionSummary(
+  task: { title: string; description: string | null },
+  submission: { content: string; url: string | null }
+): Promise<string | null> {
+  const prompt = `A team member submitted work for a task. Write a 1-2 sentence plain-language summary of what they submitted, for teammates who need to review it quickly.
+
+Task: ${task.title}${task.description ? `\n${task.description}` : ''}
+
+Submission:
+${submission.content}${submission.url ? `\nLink: ${submission.url}` : ''}
+
+Be specific to what they actually wrote — do not add things they didn't say.`
+
+  try {
+    const message = await sendAiApiRequest<{ summary: string }>('fast_model', 300, prompt, submissionSummarySchema)
+    return message.summary
+  } catch {
+    return null
+  }
+}
+
+export interface DeadlineTaskContext {
+  title: string
+  description: string | null
+  deadline: string
+}
+
+export interface DeadlineActionSuggestion {
+  label: string
+  rationale: string
+  action: 'extend' | 'reassign' | 'custom'
+  extendDeadline: string | null
+  extendTime: string | null
+  reassignMemberId: string | null
+}
+
+function buildDeadlineSuggestionsSchema(candidateMemberIds: string[]) {
+  return {
+    type: 'object',
+    properties: {
+      suggestions: {
+        type: 'array',
+        maxItems: 2,
+        items: {
+          type: 'object',
+          properties: {
+            label: { type: 'string' },
+            rationale: { type: 'string' },
+            action: { type: 'string', enum: ['extend', 'reassign', 'custom'] },
+            extend_deadline: { type: ['string', 'null'] },
+            extend_time: { type: ['string', 'null'] },
+            reassign_member_id: { type: ['string', 'null'], enum: [...candidateMemberIds, null] },
+          },
+          required: ['label', 'rationale', 'action', 'extend_deadline', 'extend_time', 'reassign_member_id'],
+          additionalProperties: false,
+        },
+      },
+    },
+    required: ['suggestions'],
+    additionalProperties: false,
+  }
+}
+
+// Suggestions aren't limited to extend/reassign — 'custom' carries no structured
+// effect at all (e.g. "Schedule a meeting"), so a team can act on it without the
+// AI needing to map every recommendation onto the two structured options.
+export async function generateDeadlineActionSuggestions(
+  task: DeadlineTaskContext,
+  agreements: Partial<Record<ChatComponent, string>>,
+  members: { id: string; displayName: string }[],
+  currentAssigneeId: string | null
+): Promise<DeadlineActionSuggestion[]> {
+  const agreementSection = (['rules', 'division_of_labor'] as ChatComponent[])
+    .filter(c => agreements[c])
+    .map(c => `${COMPONENT_LABELS[c]}: ${agreements[c]}`)
+    .join('\n') || 'No agreement text available.'
+
+  // Reassigning to whoever already missed the deadline isn't a suggestion.
+  const candidates = members.filter(m => m.id !== currentAssigneeId)
+  const memberSection = candidates.map(m => `- ${m.displayName} (id: ${m.id})`).join('\n') || 'No other members on the team.'
+
+  const prompt = `A student team missed a deadline on one of their tasks. Suggest 1-2 concrete next steps grounded specifically in what this team already agreed to about how they work together.
+
+Task: ${task.title}${task.description ? `\n${task.description}` : ''}
+Deadline missed: ${task.deadline}
+
+What the team agreed on:
+${agreementSection}
+
+Other team members (for a reassignment suggestion):
+${memberSection}
+
+For each suggestion:
+- Write a short label (e.g. "Extend to Friday and check in", "Hand it to Dan", "Schedule a meeting").
+- Write a 1 sentence rationale that names the specific agreement text driving the suggestion — do not suggest something the team never agreed to.
+- Pick an action: "extend" (propose extend_deadline as YYYY-MM-DD, after today; also propose extend_time as 24-hour HH:MM if the agreement text implies a specific time — e.g. a meeting time or work-hours cutoff — otherwise leave extend_time null and it'll default to end of day), "reassign" (propose reassign_member_id from the list above), or "custom" (anything else — leave extend_deadline, extend_time, and reassign_member_id null).
+- Only suggest something the agreement text actually supports. If nothing in the agreement text supports a confident suggestion, return fewer suggestions rather than inventing one.`
+
+  const schema = buildDeadlineSuggestionsSchema(candidates.map(m => m.id))
+  const message = await sendAiApiRequest<{
+    suggestions: { label: string; rationale: string; action: 'extend' | 'reassign' | 'custom'; extend_deadline: string | null; extend_time: string | null; reassign_member_id: string | null }[]
+  }>('fast_model', 600, prompt, schema)
+
+  return message.suggestions.map(s => ({
+    label: s.label,
+    rationale: s.rationale,
+    action: s.action,
+    extendDeadline: s.extend_deadline,
+    extendTime: s.extend_time,
+    reassignMemberId: s.reassign_member_id,
+  }))
+}
