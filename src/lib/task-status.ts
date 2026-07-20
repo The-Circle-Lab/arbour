@@ -34,4 +34,5 @@ export interface TaskSubmission {
   submitted_at: string
   content: string
   url: string | null
+  summary: string | null
 }

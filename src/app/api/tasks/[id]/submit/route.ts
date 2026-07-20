@@ -3,6 +3,7 @@ import { validate as isUuid } from 'uuid'
 import { queryOne, withTransaction } from '@/lib/db'
 import { requireTeamMemberByTeamId } from '@/lib/auth/team-access'
 import { isSubmittable, type TaskStatus } from '@/lib/task-status'
+import { generateSubmissionSummary } from '@/lib/ai'
 
 function isValidHttpUrl(value: string): boolean {
   try {
@@ -17,8 +18,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const { id } = await params
   if (!isUuid(id)) return NextResponse.json({ error: 'Task not found' }, { status: 404 })
 
-  const task = await queryOne<{ team_id: string; status: TaskStatus }>(
-    'SELECT team_id, status FROM tasks WHERE id = $1',
+  const task = await queryOne<{ team_id: string; status: TaskStatus; title: string; description: string | null }>(
+    'SELECT team_id, status, title, description FROM tasks WHERE id = $1',
     [id]
   )
   if (!task) return NextResponse.json({ error: 'Task not found' }, { status: 404 })
@@ -39,15 +40,21 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: 'url must be a valid http(s) URL' }, { status: 400 })
   }
 
+  // Best-effort — a slow or failed AI call never blocks a submission.
+  const summary = await generateSubmissionSummary(
+    { title: task.title, description: task.description },
+    { content: content.trim(), url: trimmedUrl || null }
+  ).catch(() => null)
+
   // Deliberately does not clear task_approvals — submission happens after the
   // team has approved the task list, and clearing here would flip
   // tasksApproved false and regress the team's phase (src/lib/phase.ts) back
   // from CHECKIN_1 to TASKS.
   await withTransaction(async tx => {
     await tx.query(
-      `INSERT INTO task_submissions (task_id, submitted_by, content, url)
-       VALUES ($1, $2, $3, $4)`,
-      [id, membership.memberId, content.trim(), trimmedUrl || null]
+      `INSERT INTO task_submissions (task_id, submitted_by, content, url, summary)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [id, membership.memberId, content.trim(), trimmedUrl || null, summary]
     )
     await tx.query(
       `UPDATE tasks SET status = 'submitted', updated_at = NOW() WHERE id = $1`,
