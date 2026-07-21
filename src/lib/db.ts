@@ -56,3 +56,25 @@ export const UNIQUE_VIOLATION = '23505'
 export function isUniqueViolation(e: unknown): boolean {
   return typeof e === 'object' && e !== null && (e as { code?: string }).code === UNIQUE_VIOLATION
 }
+
+// Session-scoped advisory lock, held across `fn` (which may include a slow
+// network call — unlike pg_advisory_xact_lock, this isn't tied to a
+// transaction, so it's safe to hold across an await that isn't a DB query).
+// Returns null without running `fn` if another caller already holds the
+// lock for this (classId, key) pair, instead of blocking — callers use this
+// to skip redundant work (e.g. a duplicate AI generation call) rather than
+// queuing behind it.
+export async function tryWithAdvisoryLock<T>(classId: number, key: string, fn: () => Promise<T>): Promise<T | null> {
+  const client = await getPool().connect()
+  try {
+    const res = await client.query<{ locked: boolean }>('SELECT pg_try_advisory_lock($1, hashtext($2)) AS locked', [classId, key])
+    if (!res.rows[0].locked) return null
+    try {
+      return await fn()
+    } finally {
+      await client.query('SELECT pg_advisory_unlock($1, hashtext($2))', [classId, key])
+    }
+  } finally {
+    client.release()
+  }
+}

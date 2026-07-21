@@ -11,6 +11,7 @@ import {
   type DetectionBudget,
   type DeadlineChoicePayload,
 } from '@/lib/task-deadline-events'
+import { getCurrentPlantState, type PlantState } from '@/lib/plant-health'
 
 interface SubmissionVoteRow {
   member_id: string | null
@@ -86,7 +87,8 @@ async function buildDeadlineEvent(
   membersById: Map<string, string>,
   members: { id: string; displayName: string }[],
   agreements: Partial<Record<ChatComponent, string>>,
-  budget: DetectionBudget
+  budget: DetectionBudget,
+  teamId: string
 ) {
   if (task.status === 'done' || !task.deadline) return null
   if (new Date(task.deadline).getTime() >= Date.now()) return null
@@ -95,6 +97,7 @@ async function buildDeadlineEvent(
     task.id,
     task.deadline,
     {
+      teamId,
       task: { title: task.title, description: task.description, deadline: task.deadline },
       agreements,
       members,
@@ -149,15 +152,16 @@ async function buildDeadlineEvent(
   }
 }
 
-// Derived from the team's currently-open deadline events, not a separate
-// stored value — it always reflects live state, never goes stale. Any single
-// unresolved deadline miss wilts the plant; once every open event resolves,
-// this goes back to null.
-function computePlantDistressSeverity(
+// Only shows the "your plant isn't doing great" interstitial when there's an
+// open deadline event to acknowledge — but the severity shown is the real
+// current level from the unified plant health ledger, not a hardcoded value.
+async function computePlantDistressState(
+  teamId: string,
   tasksWithEvents: { deadlineEvent: unknown }[]
-): 'wilting' | null {
+): Promise<PlantState | null> {
   const hasOpenEvent = tasksWithEvents.some(t => t.deadlineEvent !== null)
-  return hasOpenEvent ? 'wilting' : null
+  if (!hasOpenEvent) return null
+  return getCurrentPlantState(teamId)
 }
 
 export async function GET(req: Request) {
@@ -234,11 +238,11 @@ export async function GET(req: Request) {
   const tasksWithExtras = []
   for (const t of tasks) {
     const review = await buildReview(t, members.length, membership.memberId)
-    const deadlineEvent = await buildDeadlineEvent(t, membersById, members, agreements, budget)
+    const deadlineEvent = await buildDeadlineEvent(t, membersById, members, agreements, budget, membership.teamId)
     tasksWithExtras.push({ ...t, deadline_local: formatDeadlineLocal(t.deadline), review, deadlineEvent })
   }
 
-  const plantDistress = computePlantDistressSeverity(tasksWithExtras)
+  const plantDistress = await computePlantDistressState(membership.teamId, tasksWithExtras)
 
   return NextResponse.json({ tasks: tasksWithExtras, approvals, plantDistress })
 }

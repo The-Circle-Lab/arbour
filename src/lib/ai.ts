@@ -453,3 +453,76 @@ For each suggestion:
     reassignMemberId: s.reassign_member_id,
   }))
 }
+
+const finalReportSchema = {
+  type: 'object',
+  properties: {
+    summary: { type: 'string' },
+    highlights: { type: 'array', items: { type: 'string' } },
+    growth_areas: { type: 'array', items: { type: 'string' } },
+  },
+  required: ['summary', 'highlights', 'growth_areas'],
+  additionalProperties: false,
+}
+
+export interface FinalReportProjectContext {
+  title: string | null
+  brief: string | null
+}
+
+export interface FinalReportPlantSummary {
+  missedDeadlines: number
+  recoveredDeadlines: number
+  checkinDecrements: number
+  finalState: string
+}
+
+export interface FinalReportTaskSummary {
+  done: number
+  total: number
+  declinedSubmissions: number
+}
+
+export interface FinalReportSummaryResult {
+  summary: string
+  highlights: string[]
+  growthAreas: string[]
+}
+
+export async function generateFinalReportSummary(
+  project: FinalReportProjectContext,
+  agreements: Partial<Record<ChatComponent, string>>,
+  plant: FinalReportPlantSummary,
+  tasks: FinalReportTaskSummary,
+): Promise<FinalReportSummaryResult> {
+  const projectSection = [
+    project.title ? `Project title: ${project.title}` : '',
+    project.brief ? `Assignment brief: ${project.brief}` : '',
+  ].filter(Boolean).join('\n') || 'No project details were provided.'
+
+  const agreementSection = CHAT_COMPONENTS
+    .filter(c => agreements[c])
+    .map(c => `${COMPONENT_LABELS[c]}: ${agreements[c]}`)
+    .join('\n') || 'No agreement text available.'
+
+  const prompt = `You are writing a short final wrap-up for a student team's collaboration process, at the end of their project.
+
+${projectSection}
+
+What the team agreed on at the start:
+${agreementSection}
+
+How the plant (the team's shared health indicator) moved over the project: ${plant.missedDeadlines} deadline(s) were missed, ${plant.recoveredDeadlines} of those were recovered by finishing and getting the work approved, and check-ins applied ${plant.checkinDecrements} additional level decrement(s) for CHAT-alignment tension. The plant ended the project in state: ${plant.finalState}.
+
+Task delivery: ${tasks.done} of ${tasks.total} tasks were completed and approved. ${tasks.declinedSubmissions} submission(s) were declined by a teammate before being approved.
+
+Write a 3-4 sentence plain-language narrative of how this team collaborated and delivered, covering both how they worked together and how the work actually got done. Then list 2-4 short "went well" highlight bullets, and 2-4 short constructive growth-area bullets (framed for what to watch for next time, not blame). Be specific to what actually happened above — do not invent details that weren't given.`
+
+  const message = await sendAiApiRequest<{ summary: string; highlights: string[]; growth_areas: string[] }>('default_model', 800, prompt, finalReportSchema)
+
+  return {
+    summary: message.summary,
+    highlights: message.highlights,
+    growthAreas: message.growth_areas,
+  }
+}

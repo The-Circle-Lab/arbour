@@ -3,6 +3,7 @@ import { query, queryOne, withTransaction, TransactionQuery } from './db'
 import { generateDeadlineActionSuggestions, DeadlineTaskContext } from './ai'
 import { ChatComponent } from './chat-components'
 import { toDeadlineUtc } from './dates'
+import { applyPlantHealthDelta } from './plant-health'
 
 export interface StoredDeadlineSuggestion {
   id: string
@@ -36,6 +37,7 @@ async function fetchLatestEvent(taskId: string): Promise<DeadlineEventRow | null
 }
 
 interface DetectionContext {
+  teamId: string
   task: DeadlineTaskContext
   agreements: Partial<Record<ChatComponent, string>>
   members: { id: string; displayName: string }[]
@@ -86,6 +88,16 @@ export async function getOrCreateOpenDeadlineEvent(
        RETURNING ${EVENT_COLUMNS}`,
       [taskId, currentDeadlineIso]
     )
+
+    // A newly-detected miss always dings the plant by one level, on top of
+    // whatever the current level already is.
+    await applyPlantHealthDelta(tx, {
+      teamId: context.teamId,
+      delta: -1,
+      source: 'deadline_missed',
+      taskId,
+    })
+
     return { row: inserted[0], isNew: true }
   })
 

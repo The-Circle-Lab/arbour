@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { validate as isUuid } from 'uuid'
 import { queryOne, withTransaction } from '@/lib/db'
 import { requireTeamMemberByTeamId } from '@/lib/auth/team-access'
+import { applyPlantHealthDelta } from '@/lib/plant-health'
 
 class AlreadyResolvedError extends Error {}
 
@@ -70,6 +71,24 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       )
       if (approvedRows[0].approved >= eligibleRows[0].eligible) {
         await tx.query(`UPDATE tasks SET status = 'done', updated_at = NOW() WHERE id = $1`, [id])
+
+        // Only tasks that actually missed a deadline have anything to recover
+        // from — finishing a task that was never late doesn't move the plant.
+        const outstandingRows = await tx.query<{ outstanding: number }>(
+          `SELECT (COUNT(*) FILTER (WHERE source = 'deadline_missed')
+                 - COUNT(*) FILTER (WHERE source = 'task_recovered'))::int AS outstanding
+           FROM plant_health_events WHERE team_id = $1 AND task_id = $2`,
+          [task.team_id, id]
+        )
+        const outstanding = outstandingRows[0]?.outstanding ?? 0
+        if (outstanding > 0) {
+          await applyPlantHealthDelta(tx, {
+            teamId: task.team_id,
+            delta: outstanding,
+            source: 'task_recovered',
+            taskId: id,
+          })
+        }
       }
     })
   } catch (err) {
