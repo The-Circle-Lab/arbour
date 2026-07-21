@@ -61,6 +61,14 @@ export default function StartPage() {
           >
             View collaboration agreement
           </button>
+          {done && (
+            <button
+              onClick={() => router.push(`/${code}/report`)}
+              className="w-full bg-white/10 text-white border border-white/20 rounded-xl py-3 text-sm font-medium hover:bg-white/20 transition"
+            >
+              View final report →
+            </button>
+          )}
         </div>
 
         <p className="text-green-300 text-xs mt-6">

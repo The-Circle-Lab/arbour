@@ -216,7 +216,15 @@ export default function AgreePage() {
   function formatResponse(data: Record<string, unknown>): string {
     return Object.entries(data)
       .filter(([k]) => !k.endsWith('_other'))
-      .map(([, v]) => Array.isArray(v) ? v.join(', ') : v as string)
+      .map(([, v]) => {
+        if (Array.isArray(v)) return v.join(', ')
+        if (v && typeof v === 'object') {
+          return Object.entries(v as Record<string, string>)
+            .map(([opt, level]) => `${opt}: ${level}`)
+            .join(', ')
+        }
+        return v as string
+      })
       .filter(Boolean)
       .join(' · ')
   }
