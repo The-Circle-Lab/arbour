@@ -37,6 +37,16 @@ export interface PlantResult {
   componentScores: Record<ChatComponent, number>
 }
 
+// How many levels a check-in cycle's flagged-component count should knock off
+// the team's *current* unified plant level (stacked on top of whatever task
+// events already did to it), not an absolute state on its own.
+export function flagCountToLevelDrop(flagCount: number): number {
+  if (flagCount <= 0) return 0
+  if (flagCount <= 2) return 1
+  if (flagCount <= 4) return 2
+  return 3
+}
+
 export function computePlantState(checkins: CheckinRow[], teamSize: number): PlantResult {
   const componentScores: Record<ChatComponent, number> = {} as Record<ChatComponent, number>
 

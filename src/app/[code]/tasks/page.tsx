@@ -8,7 +8,7 @@ import { apiRequest } from '@/lib/api-client'
 import { TaskSubmittedModal } from '@/components/tasks/TaskSubmittedModal'
 import { DeadlineMissedModal } from '@/components/tasks/DeadlineMissedModal'
 import { PlantDistressModal } from '@/components/tasks/PlantDistressModal'
-import { PLANT_TYPES, type PlantType } from '@/components/PlantVisual'
+import { PLANT_TYPES, type PlantType, type PlantState } from '@/components/PlantVisual'
 import type { ChoiceInput, PendingDeadlineEvent, PendingReview, TeamMemberOption } from '@/lib/tasks-types'
 
 interface TaskRow {
@@ -48,7 +48,7 @@ export default function TaskListPage() {
 
   const [team, setTeam] = useState<TeamData | null>(null)
   const [tasks, setTasks] = useState<TaskRow[]>([])
-  const [plantDistress, setPlantDistress] = useState<'wilting' | null>(null)
+  const [plantDistress, setPlantDistress] = useState<PlantState | null>(null)
   const [filter, setFilter] = useState<'mine' | 'all'>('mine')
   const [error, setError] = useState<string | null>(null)
   const [sawDistressReason, setSawDistressReason] = useState(false)
@@ -333,6 +333,7 @@ export default function TaskListPage() {
       {showPlantDistress && (
         <PlantDistressModal
           plantType={team.plantType}
+          state={plantDistress!}
           onSeeReason={() => setSawDistressReason(true)}
         />
       )}
