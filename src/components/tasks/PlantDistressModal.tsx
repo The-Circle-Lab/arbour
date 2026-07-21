@@ -2,10 +2,11 @@
 
 import { useId } from 'react'
 import { Modal } from '@/components/Modal'
-import { PlantVisual, type PlantType } from '@/components/PlantVisual'
+import { PlantVisual, type PlantType, type PlantState } from '@/components/PlantVisual'
 
 interface PlantDistressModalProps {
   plantType: PlantType
+  state: PlantState
   onSeeReason: () => void
 }
 
@@ -13,7 +14,7 @@ interface PlantDistressModalProps {
 // plant wilts the moment any deadline is missed, before anyone sees the
 // details, so the consequence lands as something that happened to the
 // team's shared plant, not just another form to fill out.
-export function PlantDistressModal({ plantType, onSeeReason }: PlantDistressModalProps) {
+export function PlantDistressModal({ plantType, state, onSeeReason }: PlantDistressModalProps) {
   const headingId = useId()
 
   return (
@@ -26,7 +27,7 @@ export function PlantDistressModal({ plantType, onSeeReason }: PlantDistressModa
       </div>
 
       <div className="p-6 flex flex-col items-center text-center">
-        <PlantVisual state="wilting" plantType={plantType} size={140} />
+        <PlantVisual state={state} plantType={plantType} size={140} />
         <button
           onClick={onSeeReason}
           className="w-full bg-green-700 text-white rounded-xl py-3 mt-6 font-medium hover:bg-green-800 transition"

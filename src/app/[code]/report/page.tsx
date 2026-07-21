@@ -1,0 +1,385 @@
+'use client'
+
+import { useEffect, useState, useCallback } from 'react'
+import { useParams, useRouter } from 'next/navigation'
+import { useSession, getMembership } from '@/lib/session'
+import { COMPONENT_LABELS, ChatComponent } from '@/lib/chat-components'
+import { STATUS_LABELS, STATUS_COLORS, type TaskStatus } from '@/lib/task-status'
+import { PlantVisual, type PlantType, type PlantState } from '@/components/PlantVisual'
+
+interface AgreementEntry {
+  component: ChatComponent
+  finalText: string | null
+}
+
+interface PlantHealthEntry {
+  occurredAt: string
+  level: number
+  state: PlantState
+  delta: number
+  source: 'deadline_missed' | 'task_recovered' | 'checkin'
+  taskId: string | null
+  taskTitle: string | null
+  cycleNumber: number | null
+  flaggedComponents: ChatComponent[] | null
+  perComponent: Record<ChatComponent, string> | null
+}
+
+interface SubmissionVoteEntry {
+  memberId: string | null
+  displayName: string
+  vote: 'approve' | 'decline'
+  reason: string | null
+  createdAt: string
+}
+
+interface SubmissionCommentEntry {
+  memberId: string | null
+  displayName: string
+  comment: string
+  createdAt: string
+}
+
+interface TaskSubmissionEntry {
+  id: string
+  submitterDisplayName: string | null
+  submittedAt: string
+  content: string
+  url: string | null
+  summary: string | null
+  votes: SubmissionVoteEntry[]
+  comments: SubmissionCommentEntry[]
+}
+
+interface DeadlineProposalEntry {
+  id: string
+  round: number
+  proposedByName: string
+  label: string
+  status: 'pending' | 'accepted' | 'rejected'
+  responses: { displayName: string; response: 'agree' | 'disagree' }[]
+}
+
+interface DeadlineEventEntry {
+  id: string
+  deadline: string
+  detectedAt: string
+  resolvedAt: string | null
+  resolution: string | null
+  resolvedByName: string | null
+  votes: { displayName: string; label: string }[]
+  proposals: DeadlineProposalEntry[]
+}
+
+interface TaskWorkflowEntry {
+  id: string
+  title: string
+  description: string | null
+  status: TaskStatus
+  deadline: string | null
+  assigneeDisplayName: string | null
+  submissions: TaskSubmissionEntry[]
+  deadlineEvents: DeadlineEventEntry[]
+}
+
+interface DecisionTimelineEntry {
+  type: 'agreement_reached' | 'tension_resolved' | 'work_declined' | 'deadline_consensus'
+  at: string
+  component?: ChatComponent
+  label: string
+  detail: string
+}
+
+interface AiReport {
+  summary: string
+  highlights: string[]
+  growth_areas: string[]
+  generated_at: string
+}
+
+interface ReportData {
+  team: { name: string; projectTitle: string | null; plantType: string | null }
+  agreements: AgreementEntry[]
+  plantHealthHistory: PlantHealthEntry[]
+  taskWorkflow: TaskWorkflowEntry[]
+  taskStats: Record<TaskStatus, number>
+  decisionTimeline: DecisionTimelineEntry[]
+  aiReport: AiReport | null
+}
+
+const STATE_LABELS: Record<PlantState, string> = {
+  thriving: 'Thriving',
+  doing_okay: 'Doing okay',
+  wilting: 'Wilting',
+  dead: 'Dead',
+}
+
+const SOURCE_LABELS: Record<PlantHealthEntry['source'], string> = {
+  deadline_missed: 'Deadline missed',
+  task_recovered: 'Task completed',
+  checkin: 'Check-in',
+}
+
+const TIMELINE_STYLES: Record<DecisionTimelineEntry['type'], string> = {
+  agreement_reached: 'bg-green-50 border-green-100 text-green-900',
+  deadline_consensus: 'bg-green-50 border-green-100 text-green-900',
+  tension_resolved: 'bg-amber-50 border-amber-100 text-amber-900',
+  work_declined: 'bg-red-50 border-red-100 text-red-900',
+}
+
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+}
+
+export default function FinalReportPage() {
+  const { code } = useParams<{ code: string }>()
+  const router = useRouter()
+  const { loading: sessionLoading, user, memberships } = useSession()
+  const membership = getMembership(memberships, code)
+
+  const [data, setData] = useState<ReportData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [loadingAI, setLoadingAI] = useState(false)
+  const [aiTimedOut, setAiTimedOut] = useState(false)
+
+  const pollForAI = useCallback(async (teamCode: string) => {
+    setLoadingAI(true)
+    setAiTimedOut(false)
+    fetch(`/api/final-report/${teamCode.toUpperCase()}`, { method: 'POST' }).catch(() => {})
+
+    let found: AiReport | null = null
+    for (let attempt = 0; attempt < 40; attempt++) {
+      const res = await fetch(`/api/final-report/${teamCode.toUpperCase()}`)
+      if (res.ok) {
+        const d: ReportData = await res.json()
+        setData(d)
+        if (d.aiReport) { found = d.aiReport; break }
+      }
+      await new Promise(r => setTimeout(r, 3000))
+    }
+    if (!found) setAiTimedOut(true)
+    setLoadingAI(false)
+  }, [])
+
+  useEffect(() => {
+    if (sessionLoading) return
+    if (!user || !membership) { router.replace('/'); return }
+
+    async function load() {
+      const res = await fetch(`/api/final-report/${code.toUpperCase()}`)
+      if (!res.ok) { setLoading(false); return }
+      const d: ReportData = await res.json()
+      setData(d)
+      setLoading(false)
+      if (!d.aiReport) await pollForAI(code)
+    }
+    load()
+  }, [sessionLoading, user, membership, code, router, pollForAI])
+
+  if (loading || !data) {
+    return (
+      <main className="min-h-screen bg-stone-50 flex items-center justify-center">
+        <p className="text-stone-400 text-sm">Loading…</p>
+      </main>
+    )
+  }
+
+  const plantType = (data.team.plantType as PlantType) ?? 'default'
+
+  return (
+    <main className="min-h-screen bg-stone-50 p-4 md:p-8">
+      <div className="max-w-3xl mx-auto">
+        <div className="mb-8">
+          <button onClick={() => router.back()} className="text-xs text-stone-400 hover:text-stone-600 mb-4 block">
+            ← Back
+          </button>
+          <h1 className="text-2xl font-bold text-stone-800">{data.team.name}: Final Report</h1>
+          <p className="text-stone-500 text-sm mt-1">
+            {data.team.projectTitle ?? 'Your project'} — how the team collaborated and delivered.
+          </p>
+        </div>
+
+        {/* AI summary */}
+        <div className="bg-white rounded-2xl shadow-sm border border-stone-100 p-6 mb-8">
+          <h2 className="text-lg font-bold text-stone-800 mb-3">Summary</h2>
+          {data.aiReport ? (
+            <>
+              <p className="text-sm text-stone-700 leading-relaxed mb-5">{data.aiReport.summary}</p>
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs font-semibold text-green-700 uppercase tracking-wide mb-2">What went well</p>
+                  <ul className="space-y-1.5">
+                    {data.aiReport.highlights.map((h, i) => (
+                      <li key={i} className="text-sm text-stone-700 flex gap-2">
+                        <span className="text-green-600">•</span>{h}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-2">Worth watching next time</p>
+                  <ul className="space-y-1.5">
+                    {data.aiReport.growth_areas.map((g, i) => (
+                      <li key={i} className="text-sm text-stone-700 flex gap-2">
+                        <span className="text-amber-600">•</span>{g}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </>
+          ) : loadingAI ? (
+            <div className="bg-green-50 rounded-xl p-4 text-sm text-green-700 animate-pulse">Writing your team&apos;s summary…</div>
+          ) : aiTimedOut ? (
+            <div className="bg-amber-50 rounded-xl p-4 text-sm text-amber-800 flex items-center justify-between">
+              <span>This is taking longer than expected.</span>
+              <button
+                onClick={() => pollForAI(code as string)}
+                className="ml-4 px-3 py-1.5 bg-amber-700 text-white rounded-lg text-xs font-medium hover:bg-amber-800 transition"
+              >
+                Retry
+              </button>
+            </div>
+          ) : null}
+        </div>
+
+        {/* Plant health timeline */}
+        <div className="bg-white rounded-2xl shadow-sm border border-stone-100 p-6 mb-8">
+          <h2 className="text-lg font-bold text-stone-800 mb-4">Plant health over time</h2>
+          {data.plantHealthHistory.length === 0 ? (
+            <p className="text-sm text-stone-400 italic">Nothing changed the plant&apos;s health this project.</p>
+          ) : (
+            <div className="space-y-3">
+              {data.plantHealthHistory.map((entry, i) => (
+                <div key={i} className="flex gap-4 items-start bg-stone-50 rounded-xl p-4">
+                  <PlantVisual state={entry.state} plantType={plantType} size={56} hideLabel />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap mb-1">
+                      <span className="text-xs font-semibold text-stone-500 uppercase tracking-wide">{SOURCE_LABELS[entry.source]}</span>
+                      <span className="text-xs text-stone-400">{formatDate(entry.occurredAt)}</span>
+                      <span className="text-xs font-medium text-stone-600">→ {STATE_LABELS[entry.state]}</span>
+                    </div>
+                    {entry.source !== 'checkin' && entry.taskTitle && (
+                      <p className="text-sm text-stone-700">
+                        {entry.source === 'deadline_missed' ? 'Missed the deadline on ' : 'Finished and got approval on '}
+                        <span className="font-medium">&quot;{entry.taskTitle}&quot;</span>
+                      </p>
+                    )}
+                    {entry.source === 'checkin' && (
+                      <div className="text-sm text-stone-700">
+                        {entry.flaggedComponents && entry.flaggedComponents.length > 0 ? (
+                          <p>Flagged: {entry.flaggedComponents.map(c => COMPONENT_LABELS[c]).join(', ')}</p>
+                        ) : (
+                          <p className="text-stone-400 italic">No components flagged.</p>
+                        )}
+                        {entry.perComponent && entry.flaggedComponents && entry.flaggedComponents.length > 0 && (
+                          <p className="text-xs text-stone-500 mt-1">{entry.perComponent[entry.flaggedComponents[0]]}</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Task & delivery history */}
+        <div className="bg-white rounded-2xl shadow-sm border border-stone-100 p-6 mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold text-stone-800">Task & delivery history</h2>
+            <span className="text-xs text-stone-400">{data.taskStats.done ?? 0} of {data.taskWorkflow.length} done</span>
+          </div>
+          {data.taskWorkflow.length === 0 ? (
+            <p className="text-sm text-stone-400 italic">No tasks were created.</p>
+          ) : (
+            <div className="space-y-4">
+              {data.taskWorkflow.map(task => (
+                <div key={task.id} className="border border-stone-100 rounded-xl p-4">
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <div>
+                      <h3 className="text-sm font-semibold text-stone-800">{task.title}</h3>
+                      <p className="text-xs text-stone-400">{task.assigneeDisplayName ?? 'Unassigned'}</p>
+                    </div>
+                    <span className={`text-xs font-medium px-2 py-1 rounded-full border shrink-0 ${STATUS_COLORS[task.status]}`}>
+                      {STATUS_LABELS[task.status]}
+                    </span>
+                  </div>
+
+                  {task.submissions.map(sub => (
+                    <div key={sub.id} className="bg-stone-50 rounded-lg p-3 mt-2">
+                      <p className="text-xs text-stone-400 mb-1">
+                        Submitted by {sub.submitterDisplayName ?? 'a former member'} · {formatDate(sub.submittedAt)}
+                      </p>
+                      <p className="text-sm text-stone-700">{sub.summary ?? sub.content}</p>
+                      {sub.votes.length > 0 && (
+                        <div className="mt-2 space-y-1">
+                          {sub.votes.map((v, i) => (
+                            <p key={i} className={`text-xs ${v.vote === 'decline' ? 'text-red-700' : 'text-green-700'}`}>
+                              {v.displayName} {v.vote === 'decline' ? `declined: "${v.reason}"` : 'approved'}
+                            </p>
+                          ))}
+                        </div>
+                      )}
+                      {sub.comments.length > 0 && (
+                        <div className="mt-2 space-y-1 border-t border-stone-200 pt-2">
+                          {sub.comments.map((c, i) => (
+                            <p key={i} className="text-xs text-stone-600">
+                              <span className="font-medium">{c.displayName}:</span> {c.comment}
+                            </p>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+
+                  {task.deadlineEvents.map(ev => (
+                    <div key={ev.id} className="bg-amber-50 border border-amber-100 rounded-lg p-3 mt-2">
+                      <p className="text-xs font-semibold text-amber-700 mb-1">
+                        Deadline missed {formatDate(ev.detectedAt)}
+                      </p>
+                      {ev.resolvedAt ? (
+                        <p className="text-sm text-stone-700">
+                          Resolved by {ev.resolution}{ev.resolvedByName ? ` (${ev.resolvedByName})` : ''} on {formatDate(ev.resolvedAt)}
+                        </p>
+                      ) : task.status === 'done' ? (
+                        <p className="text-sm text-stone-700">Resolved by finishing the work and getting it approved.</p>
+                      ) : (
+                        <p className="text-sm text-stone-400 italic">Never resolved.</p>
+                      )}
+                      {ev.proposals.filter(p => p.responses.length > 0).map(p => (
+                        <p key={p.id} className="text-xs text-stone-500 mt-1">
+                          Round {p.round}: {p.proposedByName} proposed &quot;{p.label}&quot; — {p.responses.map(r => `${r.displayName} ${r.response}d`).join(', ')}
+                        </p>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Team agreement timeline */}
+        <div className="bg-white rounded-2xl shadow-sm border border-stone-100 p-6">
+          <h2 className="text-lg font-bold text-stone-800 mb-4">Where the team agreed and disagreed</h2>
+          {data.decisionTimeline.length === 0 ? (
+            <p className="text-sm text-stone-400 italic">No recorded decisions yet.</p>
+          ) : (
+            <div className="space-y-3">
+              {data.decisionTimeline.map((entry, i) => (
+                <div key={i} className={`rounded-xl p-4 border ${TIMELINE_STYLES[entry.type]}`}>
+                  <div className="flex items-center justify-between gap-3 mb-1">
+                    <p className="text-sm font-semibold">{entry.label}</p>
+                    <span className="text-xs opacity-60 shrink-0">{formatDate(entry.at)}</span>
+                  </div>
+                  <p className="text-sm opacity-90">{entry.detail}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </main>
+  )
+}
