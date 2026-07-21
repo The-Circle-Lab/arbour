@@ -1,7 +1,7 @@
 export const maxDuration = 60
 
 import { NextResponse } from 'next/server'
-import { query, queryOne } from '@/lib/db'
+import { query, queryOne, withTransaction } from '@/lib/db'
 import { computePlantState, flagCountToLevelDrop, CheckinRow } from '@/lib/plant-logic'
 import { generateCheckinComparison, CheckinSummary } from '@/lib/ai'
 import { ChatComponent } from '@/lib/chat-components'
@@ -96,23 +96,27 @@ export async function GET(_req: Request, { params }: { params: Promise<{ code: s
     ...comparison.flaggedComponents,
   ]))
 
-  const inserted = await query<{ team_id: string }>(
-    `INSERT INTO plant_states (team_id, cycle_number, computed_state, flagged_components, ai_nudge_text, per_component)
-     VALUES ($1, $2, $3, $4, $5, $6)
-     ON CONFLICT (team_id, cycle_number) DO NOTHING
-     RETURNING team_id`,
-    [teamId, cycleNum, plantResult.state, allFlagged, null, JSON.stringify(comparison.perComponent)]
-  )
-
   // computed_state now means "the unified plant level right after this
   // cycle's check-in," not an independently-computed absolute value — only
   // apply the ledger effect (and correct the stored value) the one time this
-  // cycle is actually being processed for the first time.
+  // cycle is actually being processed for the first time. The insert, ledger
+  // write, and computed_state correction all happen in one transaction so a
+  // failure partway through can't leave the cycle permanently cached with a
+  // stale, ledger-uncorrected computed_state.
   let finalState = plantResult.state
-  if (inserted.length > 0) {
+  await withTransaction(async tx => {
+    const inserted = await tx.query<{ team_id: string }>(
+      `INSERT INTO plant_states (team_id, cycle_number, computed_state, flagged_components, ai_nudge_text, per_component)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       ON CONFLICT (team_id, cycle_number) DO NOTHING
+       RETURNING team_id`,
+      [teamId, cycleNum, plantResult.state, allFlagged, null, JSON.stringify(comparison.perComponent)]
+    )
+    if (inserted.length === 0) return
+
     const drop = flagCountToLevelDrop(allFlagged.length)
     if (drop > 0) {
-      const result = await applyPlantHealthDelta(query, {
+      const result = await applyPlantHealthDelta(tx, {
         teamId,
         delta: -drop,
         source: 'checkin',
@@ -121,14 +125,14 @@ export async function GET(_req: Request, { params }: { params: Promise<{ code: s
       })
       finalState = result.state
     } else {
-      const level = await getCurrentPlantLevel(query, teamId)
+      const level = await getCurrentPlantLevel(tx.query, teamId)
       finalState = levelToState(level)
     }
-    await query(
+    await tx.query(
       'UPDATE plant_states SET computed_state = $1 WHERE team_id = $2 AND cycle_number = $3',
       [finalState, teamId, cycleNum]
     )
-  }
+  })
 
   // Flagged components are unsettled again — clear their approvals so the team
   // must re-agree on the updated wording before the cycle counts as resolved.

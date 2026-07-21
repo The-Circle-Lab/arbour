@@ -91,7 +91,7 @@ export async function getOrCreateOpenDeadlineEvent(
 
     // A newly-detected miss always dings the plant by one level, on top of
     // whatever the current level already is.
-    await applyPlantHealthDelta(tx.query, {
+    await applyPlantHealthDelta(tx, {
       teamId: context.teamId,
       delta: -1,
       source: 'deadline_missed',

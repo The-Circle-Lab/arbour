@@ -82,7 +82,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         )
         const outstanding = outstandingRows[0]?.outstanding ?? 0
         if (outstanding > 0) {
-          await applyPlantHealthDelta(tx.query, {
+          await applyPlantHealthDelta(tx, {
             teamId: task.team_id,
             delta: outstanding,
             source: 'task_recovered',

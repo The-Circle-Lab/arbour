@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useSession, getMembership } from '@/lib/session'
 import { COMPONENT_LABELS, ChatComponent } from '@/lib/chat-components'
@@ -142,14 +142,21 @@ export default function FinalReportPage() {
   const [loadingAI, setLoadingAI] = useState(false)
   const [aiTimedOut, setAiTimedOut] = useState(false)
 
+  // Guards the polling loop below against setting state after the user has
+  // navigated away — otherwise a slow poll left running in the background
+  // keeps calling setData/setLoadingAI on an unmounted page.
+  const unmountedRef = useRef(false)
+  useEffect(() => () => { unmountedRef.current = true }, [])
+
   const pollForAI = useCallback(async (teamCode: string) => {
     setLoadingAI(true)
     setAiTimedOut(false)
     fetch(`/api/final-report/${teamCode.toUpperCase()}`, { method: 'POST' }).catch(() => {})
 
     let found: AiReport | null = null
-    for (let attempt = 0; attempt < 40; attempt++) {
+    for (let attempt = 0; attempt < 40 && !unmountedRef.current; attempt++) {
       const res = await fetch(`/api/final-report/${teamCode.toUpperCase()}`)
+      if (unmountedRef.current) return
       if (res.ok) {
         const d: ReportData = await res.json()
         setData(d)
@@ -157,6 +164,7 @@ export default function FinalReportPage() {
       }
       await new Promise(r => setTimeout(r, 3000))
     }
+    if (unmountedRef.current) return
     if (!found) setAiTimedOut(true)
     setLoadingAI(false)
   }, [])
@@ -169,6 +177,7 @@ export default function FinalReportPage() {
       const res = await fetch(`/api/final-report/${code.toUpperCase()}`)
       if (!res.ok) { setLoading(false); return }
       const d: ReportData = await res.json()
+      if (unmountedRef.current) return
       setData(d)
       setLoading(false)
       if (!d.aiReport) await pollForAI(code)
@@ -250,7 +259,10 @@ export default function FinalReportPage() {
             <p className="text-sm text-stone-400 italic">Nothing changed the plant&apos;s health this project.</p>
           ) : (
             <div className="space-y-3">
-              {data.plantHealthHistory.map((entry, i) => (
+              {data.plantHealthHistory.map((entry, i) => {
+                const flagged = entry.flaggedComponents ?? []
+                const perComponent = entry.perComponent
+                return (
                 <div key={i} className="flex gap-4 items-start bg-stone-50 rounded-xl p-4">
                   <PlantVisual state={entry.state} plantType={plantType} size={56} hideLabel />
                   <div className="flex-1 min-w-0">
@@ -267,19 +279,26 @@ export default function FinalReportPage() {
                     )}
                     {entry.source === 'checkin' && (
                       <div className="text-sm text-stone-700">
-                        {entry.flaggedComponents && entry.flaggedComponents.length > 0 ? (
-                          <p>Flagged: {entry.flaggedComponents.map(c => COMPONENT_LABELS[c]).join(', ')}</p>
+                        {flagged.length > 0 ? (
+                          <p>Flagged: {flagged.map(c => COMPONENT_LABELS[c]).join(', ')}</p>
                         ) : (
                           <p className="text-stone-400 italic">No components flagged.</p>
                         )}
-                        {entry.perComponent && entry.flaggedComponents && entry.flaggedComponents.length > 0 && (
-                          <p className="text-xs text-stone-500 mt-1">{entry.perComponent[entry.flaggedComponents[0]]}</p>
+                        {perComponent && flagged.length > 0 && (
+                          <div className="mt-1 space-y-0.5">
+                            {flagged.map(c => (
+                              <p key={c} className="text-xs text-stone-500">
+                                <span className="font-medium">{COMPONENT_LABELS[c]}:</span> {perComponent[c]}
+                              </p>
+                            ))}
+                          </div>
                         )}
                       </div>
                     )}
                   </div>
                 </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>

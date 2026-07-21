@@ -8,7 +8,7 @@ import type { MigrationBuilder } from 'node-pg-migrate'
 // that flagged a CHAT component (i.e. produced 'doing_okay' or 'dead')
 // threw a Postgres enum error when plant_states.computed_state was written.
 // Switching to TEXT + CHECK matches how the same kind of state/enum column is
-// already handled elsewhere in this schema (plant_health_events.state,
+// already handled elsewhere in this schema (plant_health_events.source,
 // task_deadline_events.resolution).
 export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.sql(`
