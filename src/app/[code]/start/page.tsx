@@ -56,6 +56,12 @@ export default function StartPage() {
             </div>
           )}
           <button
+            onClick={() => router.push(`/${code}/tasks`)}
+            className="w-full bg-white/10 text-white border border-white/20 rounded-xl py-3 text-sm font-medium hover:bg-white/20 transition"
+          >
+            View tasks
+          </button>
+          <button
             onClick={() => router.push(`/${code}/charter`)}
             className="w-full bg-white/10 text-white border border-white/20 rounded-xl py-3 text-sm font-medium hover:bg-white/20 transition"
           >
