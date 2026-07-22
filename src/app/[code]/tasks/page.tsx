@@ -173,6 +173,12 @@ export default function TaskListPage() {
     <main className="min-h-screen bg-stone-50 p-4 md:p-8">
       <div className="max-w-3xl mx-auto">
         <div className="mb-6">
+          <button
+            onClick={() => router.push(`/${code}/start`)}
+            className="text-xs text-stone-400 hover:text-stone-600 mb-4 block"
+          >
+            ← Back
+          </button>
           <h1 className="text-2xl font-bold text-stone-800">Tasks</h1>
           <p className="text-stone-500 text-sm mt-1">{team.name}</p>
         </div>
