@@ -257,6 +257,10 @@ export interface TaskSuggestion {
 }
 
 function buildTaskSuggestionsSchema(memberIds: string[]) {
+  const assigneeSchema = memberIds.length > 0
+    ? { anyOf: [{ type: 'string', enum: memberIds }, { type: 'null' }] }
+    : { type: 'null' }
+
   return {
     type: 'object',
     properties: {
@@ -267,7 +271,7 @@ function buildTaskSuggestionsSchema(memberIds: string[]) {
           properties: {
             title: { type: 'string' },
             description: { type: 'string' },
-            assignee_member_id: { type: ['string', 'null'], enum: [...memberIds, null] },
+            assignee_member_id: assigneeSchema,
             deadline: { type: ['string', 'null'] },
           },
           required: ['title', 'description', 'assignee_member_id', 'deadline'],
@@ -378,6 +382,10 @@ export interface DeadlineActionSuggestion {
 }
 
 function buildDeadlineSuggestionsSchema(candidateMemberIds: string[]) {
+  const reassignSchema = candidateMemberIds.length > 0
+    ? { anyOf: [{ type: 'string', enum: candidateMemberIds }, { type: 'null' }] }
+    : { type: 'null' }
+
   return {
     type: 'object',
     properties: {
@@ -392,7 +400,7 @@ function buildDeadlineSuggestionsSchema(candidateMemberIds: string[]) {
             action: { type: 'string', enum: ['extend', 'reassign', 'custom'] },
             extend_deadline: { type: ['string', 'null'] },
             extend_time: { type: ['string', 'null'] },
-            reassign_member_id: { type: ['string', 'null'], enum: [...candidateMemberIds, null] },
+            reassign_member_id: reassignSchema,
           },
           required: ['label', 'rationale', 'action', 'extend_deadline', 'extend_time', 'reassign_member_id'],
           additionalProperties: false,
