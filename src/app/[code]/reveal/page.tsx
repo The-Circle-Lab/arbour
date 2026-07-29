@@ -208,7 +208,7 @@ export default function RevealPage() {
           {aiResult && (
             <div className={`rounded-xl p-4 text-sm ${flagged.includes(activeComponent) ? 'bg-amber-50 text-amber-900' : 'bg-green-50 text-green-900'}`}>
               <p className="font-semibold mb-1 text-xs uppercase tracking-wide opacity-60">
-                {flagged.includes(activeComponent) ? 'Alignment gap' : 'Arbor summary'}
+                {flagged.includes(activeComponent) ? 'Alignment gap' : 'Arbour summary'}
               </p>
               <p>{aiResult.per_component[activeComponent]}</p>
               {flagged.includes(activeComponent) && (

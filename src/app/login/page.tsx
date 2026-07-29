@@ -2,7 +2,7 @@
 
 import { useState, SubmitEvent } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArborLogo } from '@/components/ArborLogo'
+import { ArbourLogo } from '@/components/ArbourLogo'
 import { useSession } from '@/lib/session'
 
 export default function LoginPage() {
@@ -40,10 +40,10 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="flex justify-center mb-3">
-            <ArborLogo size={56} />
+            <ArbourLogo size={56} />
           </div>
           <h1 className="text-3xl font-bold text-stone-800 mb-1">Welcome back</h1>
-          <p className="text-stone-500 text-sm">Log in to Arbor</p>
+          <p className="text-stone-500 text-sm">Log in to Arbour</p>
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">

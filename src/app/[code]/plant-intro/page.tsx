@@ -29,7 +29,7 @@ export default function PlantIntroPage() {
     },
     {
       heading: 'Keep it alive.',
-      body: 'After each working session or meeting, you\'ll come back to Arbor to check in. Your answers shape the plant. Honest ratings help: this is just for your team.',
+      body: 'After each working session or meeting, you\'ll come back to Arbour to check in. Your answers shape the plant. Honest ratings help: this is just for your team.',
       cta: 'Makes sense →',
     },
     {

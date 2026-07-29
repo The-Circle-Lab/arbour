@@ -1,9 +1,9 @@
-# Arbor — Build Brief for Monday Live Test
+# Arbour — Build Brief for Monday Live Test
 
 ## Context
-Arbor is a CSCL (computer-supported collaborative learning) tool for CS student teams, grounded in Cultural-Historical Activity Theory (CHAT, Engeström). It diagnoses collaboration breakdown as a structural problem — teams fail not because of bad attitudes, but because their "activity system" (the shared goal, roles, rules, tools, and community that structure collective work) is never properly established. Norm misalignment across these components is the underlying condition behind most collaboration breakdowns.
+Arbour is a CSCL (computer-supported collaborative learning) tool for CS student teams, grounded in Cultural-Historical Activity Theory (CHAT, Engeström). It diagnoses collaboration breakdown as a structural problem — teams fail not because of bad attitudes, but because their "activity system" (the shared goal, roles, rules, tools, and community that structure collective work) is never properly established. Norm misalignment across these components is the underlying condition behind most collaboration breakdowns.
 
-Arbor operationalizes three design conjectures:
+Arbour operationalizes three design conjectures:
 1. **Early visibility** — make the activity system's components explicit before work begins.
 2. **Collaboration health as accumulated tension** — represent the team's state as the accumulation (or resolution) of tensions across CHAT components, not as individual performance.
 3. **Group-level, non-punitive signaling** — surface tension at the team level, prompting reflection and renegotiation rather than assigning blame.
