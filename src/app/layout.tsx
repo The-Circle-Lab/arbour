@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Arbor",
+  title: "Arbour",
   description: "Team alignment, made visible.",
 };
 

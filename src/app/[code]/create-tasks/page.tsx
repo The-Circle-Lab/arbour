@@ -247,7 +247,7 @@ export default function TasksPage() {
         {tasks.length === 0 && (
           <div className="bg-white rounded-2xl border border-stone-100 shadow-sm p-6 mb-5 text-center">
             <p className="text-sm text-stone-500 mb-4">
-              Arbor can suggest a task list based on your project details and what each of you said about the role you want — or just add tasks yourself below.
+              Arbour can suggest a task list based on your project details and what each of you said about the role you want — or just add tasks yourself below.
             </p>
             <button
               onClick={handleGenerate}

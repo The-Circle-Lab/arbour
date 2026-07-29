@@ -20,7 +20,7 @@ export function getDatabaseUrl(): string {
       const password = parsed.password ? encodeURIComponent(parsed.password) : ''
       const host = parsed.host ?? 'localhost'
       const port = parsed.port ?? 5432
-      const database = parsed.database ?? 'arbor'
+      const database = parsed.database ?? 'arbour'
       const auth = password ? `${user}:${password}@` : `${user}@`
       return `postgres://${auth}${host}:${port}/${database}`
     } catch {

@@ -32,7 +32,7 @@ export default function CheckinIntroPage() {
           You've had a working session. Let's see how the collaboration is holding up.
         </p>
         <p className="text-stone-500 text-sm leading-relaxed mb-8">
-          Each person answers independently, then Arbor shows you where things are aligned and where tension is building.
+          Each person answers independently, then Arbour shows you where things are aligned and where tension is building.
         </p>
 
         <button

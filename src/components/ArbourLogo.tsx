@@ -1,4 +1,4 @@
-export function ArborLogo({ size = 40 }: { size?: number }) {
+export function ArbourLogo({ size = 40 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
       {/* Trunk */}

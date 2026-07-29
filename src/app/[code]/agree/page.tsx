@@ -307,7 +307,7 @@ export default function AgreePage() {
           {aiComments[activeComponent] && (
             <div className={`rounded-xl p-4 mb-4 text-sm ${isFlagged ? 'bg-amber-50 text-amber-900' : 'bg-green-50 text-green-900'}`}>
               <p className="text-xs font-semibold uppercase tracking-wide opacity-60 mb-1">
-                {isFlagged ? 'Alignment gap' : 'Arbor summary'}
+                {isFlagged ? 'Alignment gap' : 'Arbour summary'}
               </p>
               <p>{aiComments[activeComponent]}</p>
             </div>
@@ -349,7 +349,7 @@ export default function AgreePage() {
           {/* Non-flagged: show generate button if no draft yet */}
           {!isFlagged && !ag?.final_text && (
             <div className="mb-4 py-3 text-center text-sm text-stone-400">
-              {generating[activeComponent] ? 'Arbor is drafting your agreement…' : 'Generating agreement…'}
+              {generating[activeComponent] ? 'Arbour is drafting your agreement…' : 'Generating agreement…'}
             </div>
           )}
 

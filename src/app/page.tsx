@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArborLogo } from '@/components/ArborLogo'
+import { ArbourLogo } from '@/components/ArbourLogo'
 import { WaitingRoom } from '@/components/WaitingRoom'
 import { useSession } from '@/lib/session'
 
@@ -101,14 +101,14 @@ export default function LandingPage() {
             {memberships.length === 0 && (
               <div className="text-center mb-10">
                 <div className="flex justify-center mb-3">
-                  <ArborLogo size={56} />
+                  <ArbourLogo size={56} />
                 </div>
-                <h1 className="text-4xl font-bold text-stone-800 mb-2">Arbor</h1>
+                <h1 className="text-4xl font-bold text-stone-800 mb-2">Arbour</h1>
                 <p className="text-stone-500 text-sm mb-6">Team alignment, made visible.</p>
 
                 <div className="bg-white rounded-2xl border border-stone-100 shadow-sm p-5 text-left mb-8">
                   <p className="text-sm text-stone-600 leading-relaxed">
-                    Arbor helps teams get aligned before they start working. You each reflect privately on six areas of your collaboration, compare answers side-by-side, and write a shared agreement. As work progresses, short check-ins surface tension early, visualised as a plant that reflects your team&apos;s health.
+                    Arbour helps teams get aligned before they start working. You each reflect privately on six areas of your collaboration, compare answers side-by-side, and write a shared agreement. As work progresses, short check-ins surface tension early, visualised as a plant that reflects your team&apos;s health.
                   </p>
                   <p className="text-sm text-stone-600 leading-relaxed mt-3">
                     It&apos;s built on <span className="font-medium text-stone-800">Activity Theory</span>: a framework that maps collaboration across goals, roles, rules, tools, and community.
@@ -145,7 +145,7 @@ export default function LandingPage() {
         {mode === 'create' && (
           <div className="flex flex-col gap-4">
             <div className="flex items-center gap-3 mb-2">
-              <ArborLogo size={32} />
+              <ArbourLogo size={32} />
               <h2 className="text-xl font-semibold text-stone-700">Create a team</h2>
             </div>
             <input
@@ -171,7 +171,7 @@ export default function LandingPage() {
         {mode === 'join' && (
           <div className="flex flex-col gap-4">
             <div className="flex items-center gap-3 mb-2">
-              <ArborLogo size={32} />
+              <ArbourLogo size={32} />
               <h2 className="text-xl font-semibold text-stone-700">Join a team</h2>
             </div>
             <input

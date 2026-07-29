@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { useSession, getMembership } from '@/lib/session'
 import { CHAT_COMPONENTS, COMPONENT_LABELS, COMPONENT_DESCRIPTIONS, REFLECTION_QUESTIONS, ChatComponent } from '@/lib/chat-components'
 import { WaitingRoom } from '@/components/WaitingRoom'
-import { ArborLogo } from '@/components/ArborLogo'
+import { ArbourLogo } from '@/components/ArbourLogo'
 
 type Responses = Record<ChatComponent, Record<string, string | string[] | Record<string, string>>>
 
@@ -104,7 +104,7 @@ export default function ReflectPage() {
       <div className="w-full max-w-xl">
         {/* Header */}
         <div className="flex items-center gap-2 mb-6">
-          <ArborLogo size={28} />
+          <ArbourLogo size={28} />
           <div className="flex-1">
             <div className="flex items-center justify-between mb-1">
               <span className="text-xs text-stone-400 font-medium uppercase tracking-wide">

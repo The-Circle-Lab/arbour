@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useSession, getMembership } from '@/lib/session'
-import { ArborLogo } from '@/components/ArborLogo'
+import { ArbourLogo } from '@/components/ArbourLogo'
 
 interface Member {
   id: string
@@ -81,7 +81,7 @@ export default function LobbyPage() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="flex justify-center mb-3">
-            <ArborLogo size={48} />
+            <ArbourLogo size={48} />
           </div>
           <h1 className="text-2xl font-bold text-stone-800">{teamName}</h1>
           <p className="text-stone-500 text-sm mt-1">Team lobby</p>
@@ -111,7 +111,7 @@ export default function LobbyPage() {
           <p className="text-xs text-green-700 uppercase tracking-wide font-semibold mb-3">What happens next</p>
           <ol className="text-sm text-green-900 space-y-2">
             <li className="flex gap-2"><span className="font-bold">1.</span> Each of you reflects individually on 6 areas of your collaboration, privately, on your own screen.</li>
-            <li className="flex gap-2"><span className="font-bold">2.</span> Your answers are revealed side-by-side, and Arbor highlights where you align or diverge.</li>
+            <li className="flex gap-2"><span className="font-bold">2.</span> Your answers are revealed side-by-side, and Arbour highlights where you align or diverge.</li>
             <li className="flex gap-2"><span className="font-bold">3.</span> You discuss and write a group agreement for each area. Everyone approves it.</li>
             <li className="flex gap-2"><span className="font-bold">4.</span> Two check-in cycles surface tension as it builds, visualised as a plant.</li>
           </ol>

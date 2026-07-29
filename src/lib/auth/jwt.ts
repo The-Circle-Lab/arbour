@@ -2,7 +2,7 @@ import { SignJWT, jwtVerify } from 'jose'
 import { cookies } from 'next/headers'
 import { queryOne } from '@/lib/db'
 
-export const SESSION_COOKIE_NAME = 'arbor_session'
+export const SESSION_COOKIE_NAME = 'arbour_session'
 const EXPIRATION = '30d'
 const MAX_AGE_SECONDS = 60 * 60 * 24 * 30
 

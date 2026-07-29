@@ -42,7 +42,7 @@ yarn install
 Start local Postgres (Docker example):
 
 ```bash
-docker run --name arbor-postgres -e POSTGRES_PASSWORD=secret -e POSTGRES_DB=arbor -p 5432:5432 -d postgres:15
+docker run --name arbour-postgres -e POSTGRES_PASSWORD=secret -e POSTGRES_DB=arbour -p 5432:5432 -d postgres:15
 ```
 
 Create local secrets file for the app and migration runner:
@@ -124,7 +124,7 @@ npm install
 3. Start a local Postgres (optional):
 
 ```bash
-docker run --name arbor-postgres -e POSTGRES_PASSWORD=secret -e POSTGRES_DB=arbor -p 5432:5432 -d postgres:15
+docker run --name arbour-postgres -e POSTGRES_PASSWORD=secret -e POSTGRES_DB=arbour -p 5432:5432 -d postgres:15
 # set secrets.json.password to "secret" or set DATABASE_URL
 ```
 
