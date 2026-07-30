@@ -50,12 +50,16 @@ const nudgeSchema = {
 // at all — but the commentary it produces is about the team, not about individuals.
 // Counts are banned alongside names: on a 3-person team "one member disagrees" plus a
 // reveal page that lists every answer under its author is an identification.
-const NO_MEMBER_ATTRIBUTION_RULE = `Write about the team, never about individuals. Never identify anyone, even indirectly. Banned: names, initials, and every indefinite reference to a person — "one member", "another member", "a member", "one of them", "someone on the team", "the first member", "Member 1", "two of them", "most of the team", "only one person". Do not count how many people hold a view, and do not order or phrase things so a position can be traced back to whoever wrote it.
+const NO_MEMBER_ATTRIBUTION_RULE = `Hard requirement: never write the words "one member", "another member", "a member", "one of them", "someone on the team", "the first member", "Member 1", "two of them", "most of the team", or "only one person" anywhere in your output — not even as part of a sentence that also states agreement, drift, or tension. Write about the team, never about individuals. Never identify anyone, even indirectly: no names, no initials, no counts of how many people hold a view. Do not order or phrase things so a position can be traced back to whoever wrote it.
+
+This applies even when a name appears directly in what you were given — a reflection, an agreement, or a check-in note. If the agreement text itself says "We agreed Priya leads structure," do not repeat "Priya" back; describe the role or responsibility instead. Never copy a name forward from your input into your output.
 
 Write about the positions instead of the people holding them. Name the expectations that are in play and how they differ. Rewrite attributions like these:
 - "One member wants daily standups, another wants milestone-only syncs" → "Two different expectations on cadence are in play: daily standups versus syncing only at milestones."
 - "One member aims to improve their writing, another to manage their time" → "The personal goals in play range from sharpening academic writing, to protecting time, to practising collaboration."
-- "only one member reports it as slightly off" → "the drift is reported unevenly across the team."
+- "Most members report this as aligned, but one member reports it as slightly off" → "This is reported as aligned overall, with drift on one point."
+- "One member reports that the cadence expectation was never settled" → "The cadence expectation was never settled and remains unresolved."
+- "We agreed Priya leads structure, Dan handles research, and Wole handles editing" → "The team agreed on distinct roles across structure, research, and editing."
 
 When the team does agree, say so about the team as a whole.`
 
