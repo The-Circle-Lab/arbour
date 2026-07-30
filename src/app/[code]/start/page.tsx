@@ -3,7 +3,23 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useSession, getMembership } from '@/lib/session'
-import { PlantVisual, PlantType } from '@/components/PlantVisual'
+import { PlantVisual, PLANT_TYPES, PlantState, PlantType } from '@/components/PlantVisual'
+
+const PLANT_STATES: PlantState[] = ['thriving', 'doing_okay', 'wilting', 'dead']
+
+const HEADLINE: Record<PlantState, string> = {
+  thriving: 'is thriving.',
+  doing_okay: 'is doing okay.',
+  wilting: 'needs attention.',
+  dead: 'needs a reset.',
+}
+
+const FOOTNOTE: Record<PlantState, string> = {
+  thriving: 'Run a check-in after each working session to keep the plant healthy.',
+  doing_okay: 'Run a check-in after each working session to keep the plant healthy.',
+  wilting: "Check in with your team — some agreements aren't holding.",
+  dead: 'Revisit your collaboration agreement and re-align as a team.',
+}
 
 export default function StartPage() {
   const { code } = useParams<{ code: string }>()
@@ -14,28 +30,41 @@ export default function StartPage() {
   const [nextCycle, setNextCycle] = useState<number | null>(null)
   const [done, setDone] = useState(false)
   const [plantType, setPlantType] = useState<PlantType>('default')
+  // 'thriving' matches DEFAULT_LEVEL in plant-health.ts, so this is the right
+  // pre-load value — no pessimistic flash before the first response.
+  const [plantState, setPlantState] = useState<PlantState>('thriving')
 
   useEffect(() => {
     if (loading) return
     if (!user || !membership) { router.replace('/'); return }
-    fetch(`/api/teams/${code.toUpperCase()}`)
-      .then(r => r.json())
-      .then(d => {
-        setTeamName(d.name)
-        if (d.plant_type) setPlantType(d.plant_type as PlantType)
-        const phase: string = d.status?.phase ?? 'CHECKIN_1'
-        if (phase === 'DONE') { setDone(true); return }
-        if (phase === 'CHECKIN_2' || phase === 'PLANT_2') setNextCycle(2)
-        else setNextCycle(1)
-      })
+
+    let ignore = false
+
+    async function loadTeam() {
+      const res = await fetch(`/api/teams/${code.toUpperCase()}`)
+      if (!res.ok || ignore) return
+      const d = await res.json()
+      if (ignore) return
+      setTeamName(d.name)
+      if (PLANT_TYPES.includes(d.plant_type)) setPlantType(d.plant_type as PlantType)
+      if (PLANT_STATES.includes(d.plant_state)) setPlantState(d.plant_state as PlantState)
+      const phase: string = d.status?.phase ?? 'CHECKIN_1'
+      if (phase === 'DONE') { setDone(true); return }
+      if (phase === 'CHECKIN_2' || phase === 'PLANT_2') setNextCycle(2)
+      else setNextCycle(1)
+    }
+
+    loadTeam()
+    const interval = setInterval(loadTeam, 4000)
+    return () => { ignore = true; clearInterval(interval) }
   }, [loading, user, membership, router, code])
 
   return (
     <main className="min-h-screen bg-green-700 flex items-center justify-center p-6">
       <div className="max-w-md w-full text-center">
-        <PlantVisual state="thriving" plantType={plantType} size={180} />
+        <PlantVisual state={plantState} plantType={plantType} size={180} />
         <h1 className="text-2xl font-bold text-white mt-6 mb-2">
-          {teamName || 'Your team'} is aligned.
+          {teamName || 'Your team'} {HEADLINE[plantState]}
         </h1>
         <p className="text-green-200 text-sm mb-8">
           You've worked through your activity system and established working agreements. Now go build something great.
@@ -78,7 +107,7 @@ export default function StartPage() {
         </div>
 
         <p className="text-green-300 text-xs mt-6">
-          Run a check-in after each working session to keep the plant healthy.
+          {FOOTNOTE[plantState]}
         </p>
       </div>
     </main>
