@@ -10,6 +10,15 @@ export interface FinalReportTeam {
   projectTitle: string | null
   deadline: string | null
   plantType: string | null
+  grade: string | null
+}
+
+// A grade typed into the DB as '' or whitespace should behave as "no grade" —
+// used by both the summary route (freshness check) and anywhere the grade is
+// read for display.
+export function normalizeGrade(grade: string | null | undefined): string | null {
+  const trimmed = grade?.trim()
+  return trimmed ? trimmed : null
 }
 
 export interface PlantHealthEntry {
@@ -129,8 +138,8 @@ export interface FinalReportContext {
 }
 
 export async function buildFinalReportContext(teamId: string): Promise<FinalReportContext> {
-  const teamRow = await query<{ id: string; name: string; project_title: string | null; deadline: string | null; plant_type: string | null }>(
-    'SELECT id, name, project_title, deadline, plant_type FROM teams WHERE id = $1',
+  const teamRow = await query<{ id: string; name: string; project_title: string | null; deadline: string | null; plant_type: string | null; grade: string | null }>(
+    'SELECT id, name, project_title, deadline, plant_type, grade FROM teams WHERE id = $1',
     [teamId]
   )
   const team: FinalReportTeam = {
@@ -139,6 +148,7 @@ export async function buildFinalReportContext(teamId: string): Promise<FinalRepo
     projectTitle: teamRow[0].project_title,
     deadline: teamRow[0].deadline,
     plantType: teamRow[0].plant_type,
+    grade: teamRow[0].grade,
   }
 
   const membersRows = await query<{ id: string; display_name: string }>(

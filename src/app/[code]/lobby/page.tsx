@@ -102,7 +102,7 @@ export default function LobbyPage() {
             </button>
           </div>
           <p className="text-xs text-stone-400 mt-3">
-            Your teammates go to <span className="font-medium">arbor-eight.vercel.app</span> → Join a team → enter this code
+            Your teammates go to <span className="font-medium">arbour-906763384892.northamerica-northeast2.run.app</span> → Join a team → enter this code
           </p>
         </div>
 

@@ -476,6 +476,7 @@ const finalReportSchema = {
 export interface FinalReportProjectContext {
   title: string | null
   brief: string | null
+  grade: string | null
 }
 
 export interface FinalReportPlantSummary {
@@ -506,6 +507,7 @@ export async function generateFinalReportSummary(
   const projectSection = [
     project.title ? `Project title: ${project.title}` : '',
     project.brief ? `Assignment brief: ${project.brief}` : '',
+    project.grade ? `Final grade the team received for this project: ${project.grade}` : '',
   ].filter(Boolean).join('\n') || 'No project details were provided.'
 
   const agreementSection = CHAT_COMPONENTS
@@ -524,7 +526,7 @@ How the plant (the team's shared health indicator) moved over the project: ${pla
 
 Task delivery: ${tasks.done} of ${tasks.total} tasks were completed and approved. ${tasks.declinedSubmissions} submission(s) were declined by a teammate before being approved.
 
-Write a 3-4 sentence plain-language narrative of how this team collaborated and delivered, covering both how they worked together and how the work actually got done. Then list 2-4 short "went well" highlight bullets, and 2-4 short constructive growth-area bullets (framed for what to watch for next time, not blame). Be specific to what actually happened above — do not invent details that weren't given.`
+Write a 3-4 sentence plain-language narrative of how this team collaborated and delivered, covering both how they worked together and how the work actually got done. If a final grade is given, connect it to the collaboration story — say plainly how the process related to the result. Do not restate the grade on its own, and do not speculate about a grade that wasn't given. Then list 2-4 short "went well" highlight bullets, and 2-4 short constructive growth-area bullets (framed for what to watch for next time, not blame). Be specific to what actually happened above — do not invent details that weren't given.`
 
   const message = await sendAiApiRequest<{ summary: string; highlights: string[]; growth_areas: string[] }>('default_model', 800, prompt, finalReportSchema)
 

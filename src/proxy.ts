@@ -6,6 +6,13 @@ const PUBLIC_ROUTES = ['/login', '/signup']
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
+
+  // Admin has its own password-gated cookie (checked by requireAdmin() in
+  // each /api/admin/* route), separate from the user session this proxy
+  // enforces below — without this bypass a logged-out admin hitting /admin
+  // would be redirected to /login before the page ever renders.
+  if (pathname === '/admin' || pathname.startsWith('/admin/')) return NextResponse.next()
+
   const isPublicRoute = PUBLIC_ROUTES.includes(pathname)
 
   const token = request.cookies.get(SESSION_COOKIE_NAME)?.value

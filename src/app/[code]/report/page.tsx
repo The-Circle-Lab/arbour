@@ -94,17 +94,19 @@ interface AiReport {
   summary: string
   highlights: string[]
   growth_areas: string[]
+  graded_on: string | null
   generated_at: string
 }
 
 interface ReportData {
-  team: { name: string; projectTitle: string | null; plantType: string | null }
+  team: { name: string; projectTitle: string | null; plantType: string | null; grade: string | null }
   agreements: AgreementEntry[]
   plantHealthHistory: PlantHealthEntry[]
   taskWorkflow: TaskWorkflowEntry[]
   taskStats: Record<TaskStatus, number>
   decisionTimeline: DecisionTimelineEntry[]
   aiReport: AiReport | null
+  aiReportStale: boolean
 }
 
 const STATE_LABELS: Record<PlantState, string> = {
@@ -160,7 +162,7 @@ export default function FinalReportPage() {
       if (res.ok) {
         const d: ReportData = await res.json()
         setData(d)
-        if (d.aiReport) { found = d.aiReport; break }
+        if (d.aiReport && !d.aiReportStale) { found = d.aiReport; break }
       }
       await new Promise(r => setTimeout(r, 3000))
     }
@@ -180,7 +182,7 @@ export default function FinalReportPage() {
       if (unmountedRef.current) return
       setData(d)
       setLoading(false)
-      if (!d.aiReport) await pollForAI(code)
+      if (!d.aiReport || d.aiReportStale) await pollForAI(code)
     }
     load()
   }, [sessionLoading, user, membership, code, router, pollForAI])
@@ -202,7 +204,14 @@ export default function FinalReportPage() {
           <button onClick={() => router.back()} className="text-xs text-stone-400 hover:text-stone-600 mb-4 block">
             ← Back
           </button>
-          <h1 className="text-2xl font-bold text-stone-800">{data.team.name}: Final Report</h1>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="text-2xl font-bold text-stone-800">{data.team.name}: Final Report</h1>
+            {data.team.grade !== null && (
+              <span className="rounded-full border border-green-200 bg-green-50 text-green-800 text-xs font-semibold px-3 py-1">
+                Final grade: {data.team.grade}
+              </span>
+            )}
+          </div>
           <p className="text-stone-500 text-sm mt-1">
             {data.team.projectTitle ?? 'Your project'} — how the team collaborated and delivered.
           </p>
@@ -236,6 +245,9 @@ export default function FinalReportPage() {
                   </ul>
                 </div>
               </div>
+              {data.aiReportStale && (
+                <div className="bg-green-50 rounded-xl p-3 mt-5 text-xs text-green-700 animate-pulse">Updating your summary…</div>
+              )}
             </>
           ) : loadingAI ? (
             <div className="bg-green-50 rounded-xl p-4 text-sm text-green-700 animate-pulse">Writing your team&apos;s summary…</div>

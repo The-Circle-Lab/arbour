@@ -1,4 +1,4 @@
-import { query } from './db'
+import { query, type TransactionQuery } from './db'
 
 // Single owning module for task_approvals — every route that reads, records,
 // or invalidates task-list approval goes through here instead of hand-writing
@@ -36,4 +36,22 @@ export async function recordTaskApproval(teamId: string, memberId: string): Prom
 
 export async function withdrawTaskApproval(teamId: string, memberId: string): Promise<void> {
   await query('DELETE FROM task_approvals WHERE team_id = $1 AND member_id = $2', [teamId, memberId])
+}
+
+// Used by the admin scenario scripts to fast-forward a team's state without
+// regressing its phase: recording every member's approval up front keeps
+// tasksApproved (phase.ts) true no matter what else the scenario changes
+// about the task list. Runs inside the caller's transaction.
+export async function recordTaskApprovalsForAllMembers(tx: TransactionQuery, teamId: string): Promise<number> {
+  await tx.query(
+    `INSERT INTO task_approvals (team_id, member_id)
+     SELECT $1, id FROM members WHERE team_id = $1
+     ON CONFLICT (team_id, member_id) DO NOTHING`,
+    [teamId]
+  )
+  const rows = await tx.query<{ count: number }>(
+    'SELECT COUNT(*)::int AS count FROM task_approvals WHERE team_id = $1',
+    [teamId]
+  )
+  return rows[0]?.count ?? 0
 }
