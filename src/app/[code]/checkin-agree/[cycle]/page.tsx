@@ -37,7 +37,6 @@ export default function CheckinAgreePage() {
   const [ready, setReady] = useState(false)
 
   const activeRef = useRef<ChatComponent | null>(null)
-  const noteDirtyRef = useRef(false)
 
   async function loadAll() {
     const teamRes = await fetch(`/api/teams/${code.toUpperCase()}`)
@@ -85,9 +84,6 @@ export default function CheckinAgreePage() {
     )
   }
 
-  const isCreator = members[0]?.id === membership?.member_id
-  const creatorName = members[0]?.display_name ?? 'your teammate'
-
   function approvalsFor(comp: string) {
     return approvals.filter(a => a.component === comp)
   }
@@ -104,7 +100,6 @@ export default function CheckinAgreePage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ teamId, component: active, cycleNumber: cycleNum, resolutionNote: note, memberId: membership!.member_id }),
     })
-    noteDirtyRef.current = false
     await loadAll()
     setRevising(false)
   }
@@ -131,7 +126,6 @@ export default function CheckinAgreePage() {
 
   function selectComponent(comp: ChatComponent) {
     activeRef.current = comp
-    noteDirtyRef.current = false
     setActive(comp)
     setNote('')
   }
@@ -217,34 +211,28 @@ export default function CheckinAgreePage() {
               </p>
             </div>
 
-            {/* Scribe: revise; others: read-only */}
+            {/* Revise the agreement, or approve as-is if it still holds */}
             {!fullyApproved(active) && (
-              isCreator ? (
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-stone-700 mb-1">
-                    What did you decide?
-                    <span className="text-stone-400 font-normal ml-1">: update the agreement, or approve as-is if it still holds</span>
-                  </label>
-                  <textarea
-                    className="w-full border border-amber-200 rounded-lg px-3 py-2 text-sm text-stone-800 resize-none focus:outline-none focus:ring-2 focus:ring-amber-400"
-                    rows={2}
-                    value={note}
-                    onChange={e => { setNote(e.target.value); noteDirtyRef.current = true }}
-                    placeholder="e.g. We're behind on the data work, so Alan takes testing and Annie picks up the remaining analysis."
-                  />
-                  <button
-                    onClick={handleRevise}
-                    disabled={revising || !note.trim()}
-                    className="mt-2 w-full border border-green-600 text-green-700 rounded-lg py-2 text-sm font-medium hover:bg-green-50 disabled:opacity-40 transition"
-                  >
-                    {revising ? 'Updating agreement…' : 'Update agreement with this'}
-                  </button>
-                </div>
-              ) : (
-                <p className="text-xs text-stone-400 mb-4">
-                  {creatorName} is the scribe and updates the wording. Read it over and approve when it looks right.
-                </p>
-              )
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-stone-700 mb-1">
+                  What did you decide?
+                  <span className="text-stone-400 font-normal ml-1">: update the agreement, or approve as-is if it still holds</span>
+                </label>
+                <textarea
+                  className="w-full border border-amber-200 rounded-lg px-3 py-2 text-sm text-stone-800 resize-none focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  rows={2}
+                  value={note}
+                  onChange={e => setNote(e.target.value)}
+                  placeholder="e.g. We're behind on the data work, so Alan takes testing and Annie picks up the remaining analysis."
+                />
+                <button
+                  onClick={handleRevise}
+                  disabled={revising || !note.trim()}
+                  className="mt-2 w-full border border-green-600 text-green-700 rounded-lg py-2 text-sm font-medium hover:bg-green-50 disabled:opacity-40 transition"
+                >
+                  {revising ? 'Updating agreement…' : 'Update agreement with this'}
+                </button>
+              </div>
             )}
 
             {/* Approval */}

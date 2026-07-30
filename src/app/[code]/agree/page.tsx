@@ -200,9 +200,6 @@ export default function AgreePage() {
   const totalApproved = CHAT_COMPONENTS.filter(c => getStatus(c) === 'approved').length
   const allDone = totalApproved === CHAT_COMPONENTS.length
 
-  const isCreator = members[0]?.id === membership?.member_id
-  const creatorName = members[0]?.display_name ?? 'your teammate'
-
   const ag = agreements[activeComponent]
   const isFlagged = flaggedComponents.includes(activeComponent)
   const compApprovals = approvals.filter(a => a.component === activeComponent)
@@ -316,33 +313,25 @@ export default function AgreePage() {
           {/* Resolution note (flagged only) */}
           {isFlagged && !fullyApproved && (
             <div className="mb-4">
-              {isCreator ? (
-                <>
-                  <label className="block text-sm font-medium text-stone-700 mb-1">
-                    Resolution note
-                    <span className="text-stone-400 font-normal ml-1">: what did you discuss and decide?</span>
-                  </label>
-                  <textarea
-                    className="w-full border border-amber-200 rounded-lg px-3 py-2 text-sm text-stone-800 resize-none focus:outline-none focus:ring-2 focus:ring-amber-400"
-                    rows={2}
-                    value={resolutionNote}
-                    onChange={e => setResolutionNote(e.target.value)}
-                    placeholder={RESOLUTION_PLACEHOLDERS[activeComponent]}
-                  />
-                  <p className="text-xs text-stone-400 mt-1">Your teammates will see this once you generate the agreement draft.</p>
-                  <button
-                    onClick={() => generateDraft(activeComponent, teamId, resolutionNote)}
-                    disabled={generating[activeComponent] || !resolutionNote.trim()}
-                    className="mt-2 w-full border border-green-600 text-green-700 rounded-lg py-2 text-sm font-medium hover:bg-green-50 disabled:opacity-40 transition"
-                  >
-                    {generating[activeComponent] ? 'Generating agreement…' : ag?.draft_text ? 'Regenerate with new note' : 'Generate agreement draft'}
-                  </button>
-                </>
-              ) : (
-                <div className="bg-stone-50 rounded-xl px-4 py-3 text-sm text-stone-500">
-                  Waiting for {creatorName} to write the resolution note and generate a draft. You'll be able to approve it once it's ready.
-                </div>
-              )}
+              <label className="block text-sm font-medium text-stone-700 mb-1">
+                Resolution note
+                <span className="text-stone-400 font-normal ml-1">: what did you discuss and decide?</span>
+              </label>
+              <textarea
+                className="w-full border border-amber-200 rounded-lg px-3 py-2 text-sm text-stone-800 resize-none focus:outline-none focus:ring-2 focus:ring-amber-400"
+                rows={2}
+                value={resolutionNote}
+                onChange={e => setResolutionNote(e.target.value)}
+                placeholder={RESOLUTION_PLACEHOLDERS[activeComponent]}
+              />
+              <p className="text-xs text-stone-400 mt-1">Anyone on the team can write this. Your teammates will see it once the draft is generated.</p>
+              <button
+                onClick={() => generateDraft(activeComponent, teamId, resolutionNote)}
+                disabled={generating[activeComponent] || !resolutionNote.trim()}
+                className="mt-2 w-full border border-green-600 text-green-700 rounded-lg py-2 text-sm font-medium hover:bg-green-50 disabled:opacity-40 transition"
+              >
+                {generating[activeComponent] ? 'Generating agreement…' : ag?.draft_text ? 'Regenerate with new note' : 'Generate agreement draft'}
+              </button>
             </div>
           )}
 
@@ -353,46 +342,33 @@ export default function AgreePage() {
             </div>
           )}
 
-          {/* Agreement draft — editable for scribe, read-only for others */}
+          {/* Agreement draft */}
           {ag?.final_text && (
             <div className="mb-4">
               <label className="block text-sm font-medium text-stone-700 mb-1">Agreement</label>
-              {isCreator ? (
-                <>
-                  <textarea
-                    className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm text-stone-800 resize-none focus:outline-none focus:ring-2 focus:ring-green-500"
-                    rows={4}
-                    value={editText}
-                    onChange={e => { setEditText(e.target.value); setEditDirty(true); editDirtyRef.current = true }}
-                    disabled={fullyApproved}
-                  />
-                  <div className="flex items-center justify-between mt-1">
-                    {ag.recorded_by && (
-                      <span className="text-xs text-stone-400">
-                        Last edited by {members.find(m => m.id === ag.recorded_by)?.display_name ?? 'teammate'}
-                      </span>
-                    )}
-                    {!fullyApproved && editText !== ag?.final_text && (
-                      <button
-                        onClick={handleSaveText}
-                        disabled={saving}
-                        className="text-sm text-green-700 hover:underline ml-auto"
-                      >
-                        {saving ? 'Saving…' : 'Save edits'}
-                      </button>
-                    )}
-                  </div>
-                </>
-              ) : (
-                <>
-                  <p className="w-full border border-stone-100 bg-stone-50 rounded-lg px-3 py-2 text-sm text-stone-800 whitespace-pre-wrap">
-                    {ag.final_text}
-                  </p>
-                  <p className="text-xs text-stone-400 mt-1">
-                    {creatorName} is the scribe and edits the wording. Read it over and approve when it looks right.
-                  </p>
-                </>
-              )}
+              <textarea
+                className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm text-stone-800 resize-none focus:outline-none focus:ring-2 focus:ring-green-500"
+                rows={4}
+                value={editText}
+                onChange={e => { setEditText(e.target.value); setEditDirty(true); editDirtyRef.current = true }}
+                disabled={fullyApproved}
+              />
+              <div className="flex items-center justify-between mt-1">
+                {ag.recorded_by && (
+                  <span className="text-xs text-stone-400">
+                    Last edited by {members.find(m => m.id === ag.recorded_by)?.display_name ?? 'teammate'}
+                  </span>
+                )}
+                {!fullyApproved && editText !== ag?.final_text && (
+                  <button
+                    onClick={handleSaveText}
+                    disabled={saving}
+                    className="text-sm text-green-700 hover:underline ml-auto"
+                  >
+                    {saving ? 'Saving…' : 'Save edits'}
+                  </button>
+                )}
+              </div>
             </div>
           )}
 
