@@ -46,6 +46,19 @@ const nudgeSchema = {
   additionalProperties: false,
 }
 
+// The model still sees which member wrote what — it needs that to detect divergence
+// at all — but the commentary it produces is about the team, not about individuals.
+// Counts are banned alongside names: on a 3-person team "one member disagrees" plus a
+// reveal page that lists every answer under its author is an identification.
+const NO_MEMBER_ATTRIBUTION_RULE = `Write about the team, never about individuals. Never identify anyone, even indirectly. Banned: names, initials, and every indefinite reference to a person — "one member", "another member", "a member", "one of them", "someone on the team", "the first member", "Member 1", "two of them", "most of the team", "only one person". Do not count how many people hold a view, and do not order or phrase things so a position can be traced back to whoever wrote it.
+
+Write about the positions instead of the people holding them. Name the expectations that are in play and how they differ. Rewrite attributions like these:
+- "One member wants daily standups, another wants milestone-only syncs" → "Two different expectations on cadence are in play: daily standups versus syncing only at milestones."
+- "One member aims to improve their writing, another to manage their time" → "The personal goals in play range from sharpening academic writing, to protecting time, to practising collaboration."
+- "only one member reports it as slightly off" → "the drift is reported unevenly across the team."
+
+When the team does agree, say so about the team as a whole.`
+
 export interface MemberReflection {
   displayName: string
   responses: Record<ChatComponent, Record<string, unknown>>
@@ -75,8 +88,10 @@ The team has ${members.length} members. Their individual reflections across six 
 ${memberSummaries}
 
 For each of the six CHAT components (object, subject, division_of_labor, rules, tools, community), do two things:
-1. Write a 2-3 sentence plain-language comment on where the members align or where a gap exists. Name the CHAT component explicitly. Do not tell the team what to do — only name the gap or alignment. No jargon beyond the component name itself.
-2. Decide if this component should be FLAGGED (true/false). Flag it if there is a meaningful gap or potential misalignment that the team should discuss before proceeding.`
+1. Write a 2-3 sentence plain-language comment on where the team aligns or where a gap exists. Name the CHAT component explicitly. Do not tell the team what to do — only name the gap or alignment. No jargon beyond the component name itself. Write it about the team as a whole, following the attribution rule below.
+2. Decide if this component should be FLAGGED (true/false). Flag it if there is a meaningful gap or potential misalignment that the team should discuss before proceeding.
+
+${NO_MEMBER_ATTRIBUTION_RULE}`
 
   const message = await sendAiApiRequest<ComponentAnalysisResponse>('fast_model', 1500, prompt, componentAnalysisSchema)
 
@@ -178,8 +193,10 @@ Their check-in responses:
 ${checkinText}
 
 For each of the six CHAT components (object, subject, division_of_labor, rules, tools, community), do two things:
-1. Write a 2-3 sentence plain-language comment on whether the team is holding to what they agreed, or where tension has appeared since. Reference the original agreement vs. what members now report. Name the CHAT component. Do not tell the team what to do — only name the gap or the alignment. No jargon beyond the component name.
-2. Decide if this component should be FLAGGED (true/false). Flag it if there is a "very_off" rating, a divergence between members, or drift from the original agreement that the team should discuss.`
+1. Write a 2-3 sentence plain-language comment on whether the team is holding to what they agreed, or where tension has appeared since. Reference the original agreement vs. what the team now reports. Name the CHAT component. Do not tell the team what to do — only name the gap or the alignment. No jargon beyond the component name. Write it about the team as a whole, following the attribution rule below.
+2. Decide if this component should be FLAGGED (true/false). Flag it if there is a "very_off" rating, a divergence between members, or drift from the original agreement that the team should discuss.
+
+${NO_MEMBER_ATTRIBUTION_RULE}`
 
   const message = await sendAiApiRequest<ComponentAnalysisResponse>('fast_model', 1500, prompt, componentAnalysisSchema)
 
@@ -226,7 +243,9 @@ ${checkinText}
 
 Identify which CHAT components show tension — any "very_off" rating, OR divergence between members' ratings for the same component (one says aligned, another says very_off).
 
-Then write 2-4 short nudge bullets naming specific gaps without blame. Reference what was originally agreed vs. what members are now reporting. Do not tell them what to do. Each bullet is one plain sentence.`
+Then write 2-4 short nudge bullets naming specific gaps without blame. Reference what was originally agreed vs. what members are now reporting. Do not tell them what to do. Each bullet is one plain sentence.
+
+${NO_MEMBER_ATTRIBUTION_RULE}`
 
   const message = await sendAiApiRequest<{ flagged_components: ChatComponent[]; nudge_bullets: string[] }>('fast_model', 500, prompt, nudgeSchema)
 
@@ -526,7 +545,9 @@ How the plant (the team's shared health indicator) moved over the project: ${pla
 
 Task delivery: ${tasks.done} of ${tasks.total} tasks were completed and approved. ${tasks.declinedSubmissions} submission(s) were declined by a teammate before being approved.
 
-Write a 3-4 sentence plain-language narrative of how this team collaborated and delivered, covering both how they worked together and how the work actually got done. If a final grade is given, connect it to the collaboration story — say plainly how the process related to the result. Do not restate the grade on its own, and do not speculate about a grade that wasn't given. Then list 2-4 short "went well" highlight bullets, and 2-4 short constructive growth-area bullets (framed for what to watch for next time, not blame). Be specific to what actually happened above — do not invent details that weren't given.`
+Write a 3-4 sentence plain-language narrative of how this team collaborated and delivered, covering both how they worked together and how the work actually got done. If a final grade is given, connect it to the collaboration story — say plainly how the process related to the result. Do not restate the grade on its own, and do not speculate about a grade that wasn't given. Then list 2-4 short "went well" highlight bullets, and 2-4 short constructive growth-area bullets (framed for what to watch for next time, not blame). Be specific to what actually happened above — do not invent details that weren't given.
+
+${NO_MEMBER_ATTRIBUTION_RULE}`
 
   const message = await sendAiApiRequest<{ summary: string; highlights: string[]; growth_areas: string[] }>('default_model', 800, prompt, finalReportSchema)
 
