@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { query, queryOne } from '@/lib/db'
 import { getTeamStatus } from '@/lib/phase'
+import { getCurrentPlantState } from '@/lib/plant-health'
 import { requireTeamMember } from '@/lib/auth/team-access'
 
 export async function GET(_req: Request, { params }: { params: Promise<{ code: string }> }) {
@@ -24,7 +25,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ code: s
     [team.id]
   )
 
-  const status = await getTeamStatus(team.id)
+  const [status, plant_state] = await Promise.all([
+    getTeamStatus(team.id),
+    getCurrentPlantState(team.id),
+  ])
 
-  return NextResponse.json({ ...team, members, status })
+  return NextResponse.json({ ...team, members, status, plant_state })
 }
