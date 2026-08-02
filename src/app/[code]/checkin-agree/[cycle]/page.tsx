@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { useSession, getMembership } from '@/lib/session'
 import { COMPONENT_LABELS, COMPONENT_DESCRIPTIONS, ChatComponent } from '@/lib/chat-components'
 import { WaitingRoom } from '@/components/WaitingRoom'
+import { DiscussionTimer } from '@/components/DiscussionTimer'
 
 interface Agreement {
   component: string
@@ -91,6 +92,7 @@ export default function CheckinAgreePage() {
     return approvalsFor(comp).length >= teamSize
   }
   const allResolved = flagged.length > 0 && flagged.every(c => fullyApproved(c))
+  const isLeader = members.length > 0 && members[0].id === membership?.member_id
 
   async function handleRevise() {
     if (!teamId || !active || !note.trim()) return
@@ -161,6 +163,7 @@ export default function CheckinAgreePage() {
 
   return (
     <main className="min-h-screen bg-stone-50 p-4 md:p-8">
+      {!allResolved && <DiscussionTimer code={code.toUpperCase()} step="CHECKIN_AGREE" cycleNumber={cycleNum} isLeader={isLeader} />}
       <div className="max-w-3xl mx-auto">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-stone-800">Re-align after check-in</h1>

@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { useSession, getMembership } from '@/lib/session'
 import { CHAT_COMPONENTS, COMPONENT_LABELS, COMPONENT_DESCRIPTIONS, ChatComponent } from '@/lib/chat-components'
 import { WaitingRoom } from '@/components/WaitingRoom'
+import { DiscussionTimer } from '@/components/DiscussionTimer'
 
 interface Agreement {
   component: string
@@ -199,6 +200,7 @@ export default function AgreePage() {
 
   const totalApproved = CHAT_COMPONENTS.filter(c => getStatus(c) === 'approved').length
   const allDone = totalApproved === CHAT_COMPONENTS.length
+  const isLeader = members.length > 0 && members[0].id === membership?.member_id
 
   const ag = agreements[activeComponent]
   const isFlagged = flaggedComponents.includes(activeComponent)
@@ -242,6 +244,7 @@ export default function AgreePage() {
 
   return (
     <main className="min-h-screen bg-stone-50 p-4 md:p-8">
+      {!allDone && <DiscussionTimer code={code.toUpperCase()} step="AGREEING" cycleNumber={null} isLeader={isLeader} />}
       <div className="max-w-3xl mx-auto">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-stone-800">Group Agreements</h1>
