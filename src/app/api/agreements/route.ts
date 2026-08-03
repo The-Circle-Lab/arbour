@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { generateAgreementDraft, MemberReflection } from '@/lib/ai'
 import { ChatComponent } from '@/lib/chat-components'
-import { requireOwnedMember, requireTeamMemberByTeamId } from '@/lib/auth/team-access'
+import { requireOwnedMember, requireTeamMemberByTeamId, isProjectManager } from '@/lib/auth/team-access'
 import { clearAgreementApprovals, listAgreementApprovals } from '@/lib/agreement-approvals'
 
 // POST: save resolution note and trigger AI draft generation
@@ -12,6 +12,14 @@ export async function POST(req: Request) {
   const owned = await requireOwnedMember(memberId)
   if (!owned || owned.teamId !== teamId) {
     return NextResponse.json({ error: 'Not authorized for this member' }, { status: 403 })
+  }
+
+  // A resolution note is the project manager recording what the team decided
+  // for a flagged component — restrict that. The no-note path (auto-drafting
+  // an already-aligned, non-flagged component) stays open to whichever
+  // member's client happens to poll first; it's not a team decision to record.
+  if (resolutionNote && !(await isProjectManager(teamId, memberId))) {
+    return NextResponse.json({ error: 'Only the project manager can record the resolution note' }, { status: 403 })
   }
 
   // Fetch member reflections for AI draft
@@ -62,6 +70,10 @@ export async function PATCH(req: Request) {
   const owned = await requireOwnedMember(memberId)
   if (!owned || owned.teamId !== teamId) {
     return NextResponse.json({ error: 'Not authorized for this member' }, { status: 403 })
+  }
+
+  if (!(await isProjectManager(teamId, memberId))) {
+    return NextResponse.json({ error: 'Only the project manager can edit the agreement text' }, { status: 403 })
   }
 
   await query(

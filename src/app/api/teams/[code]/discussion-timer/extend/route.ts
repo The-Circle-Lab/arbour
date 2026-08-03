@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
-import { requireTeamMember } from '@/lib/auth/team-access'
-import { extendTimer, isTeamLeader, isDiscussionStep, isValidCycleNumber } from '@/lib/discussion-timer'
+import { requireTeamMember, isProjectManager } from '@/lib/auth/team-access'
+import { extendTimer, isDiscussionStep, isValidCycleNumber } from '@/lib/discussion-timer'
 
 export async function POST(req: Request, { params }: { params: Promise<{ code: string }> }) {
   const { code } = await params
@@ -13,8 +13,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ code: s
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
   }
 
-  const leader = await isTeamLeader(membership.teamId, membership.memberId)
-  if (!leader) return NextResponse.json({ error: 'Only the team leader can extend the timer' }, { status: 403 })
+  const projectManager = await isProjectManager(membership.teamId, membership.memberId)
+  if (!projectManager) return NextResponse.json({ error: 'Only the project manager can extend the timer' }, { status: 403 })
 
   const timer = await extendTimer(membership.teamId, step, cycleNumber)
   if (!timer) return NextResponse.json({ error: 'Timer has not expired yet' }, { status: 409 })

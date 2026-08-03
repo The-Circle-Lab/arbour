@@ -29,6 +29,13 @@ interface Reflection {
 
 type ComponentStatus = 'needs_resolution' | 'needs_draft' | 'needs_approval' | 'approved'
 
+interface TeamResponse {
+  id: string
+  members: { id: string; display_name: string }[]
+  status: { teamSize: number }
+  project_manager_id: string | null
+}
+
 const RESOLUTION_PLACEHOLDERS: Record<ChatComponent, string> = {
   object: 'e.g. Annie wants a polished final product, Alan wants to learn new skills. We agreed to aim for both by splitting research and presentation.',
   subject: 'e.g. Annie sees herself leading coordination, Alan prefers deep execution. We agreed on a lead/support split that rotates per task.',
@@ -46,6 +53,7 @@ export default function AgreePage() {
 
   const [teamId, setTeamId] = useState('')
   const [teamSize, setTeamSize] = useState(2)
+  const [projectManagerId, setProjectManagerId] = useState<string | null>(null)
   const [flaggedComponents, setFlaggedComponents] = useState<string[]>([])
   const [agreements, setAgreements] = useState<Record<ChatComponent, Agreement | null>>({} as Record<ChatComponent, Agreement | null>)
   const [approvals, setApprovals] = useState<Approval[]>([])
@@ -75,10 +83,11 @@ export default function AgreePage() {
   async function loadAll() {
     const teamRes = await fetch(`/api/teams/${code.toUpperCase()}`)
     if (!teamRes.ok) return
-    const teamData = await teamRes.json()
+    const teamData: TeamResponse = await teamRes.json()
     setTeamId(teamData.id)
     setTeamSize(teamData.status.teamSize)
     setMembers(teamData.members)
+    setProjectManagerId(teamData.project_manager_id ?? null)
 
     let currentFlagged: string[] = []
     const aiRes = await fetch(`/api/reveal-ai/${code.toUpperCase()}`)
@@ -232,7 +241,8 @@ export default function AgreePage() {
 
   const totalApproved = CHAT_COMPONENTS.filter(c => getStatus(c) === 'approved').length
   const allDone = totalApproved === CHAT_COMPONENTS.length
-  const isLeader = members.length > 0 && members[0].id === membership?.member_id
+  const isProjectManager = !!projectManagerId && projectManagerId === membership?.member_id
+  const projectManagerName = members.find(m => m.id === projectManagerId)?.display_name ?? 'your project manager'
 
   const ag = agreements[activeComponent]
   const isFlagged = flaggedComponents.includes(activeComponent)
@@ -280,7 +290,7 @@ export default function AgreePage() {
         <DiscussionTimer
           loading={!timerLoaded}
           timer={timer}
-          isLeader={isLeader}
+          isProjectManager={isProjectManager}
           onStart={handleStartTimer}
           onExtend={handleExtendTimer}
         />
@@ -289,7 +299,7 @@ export default function AgreePage() {
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-stone-800">Group Agreements</h1>
           <p className="text-stone-500 text-sm mt-1">
-            {totalApproved} of {CHAT_COMPONENTS.length} components agreed · {teamSize} approvals needed each
+            {`${totalApproved} of ${CHAT_COMPONENTS.length} components agreed · ${teamSize} approvals needed each`}
           </p>
         </div>
 
@@ -353,28 +363,36 @@ export default function AgreePage() {
             </div>
           )}
 
-          {/* Resolution note (flagged only) */}
+          {/* Resolution note (flagged only) — the project manager records what the team decided */}
           {isFlagged && !fullyApproved && (
             <div className="mb-4">
-              <label className="block text-sm font-medium text-stone-700 mb-1">
-                Resolution note
-                <span className="text-stone-400 font-normal ml-1">: what did you discuss and decide?</span>
-              </label>
-              <textarea
-                className="w-full border border-amber-200 rounded-lg px-3 py-2 text-sm text-stone-800 resize-none focus:outline-none focus:ring-2 focus:ring-amber-400"
-                rows={2}
-                value={resolutionNote}
-                onChange={e => setResolutionNote(e.target.value)}
-                placeholder={RESOLUTION_PLACEHOLDERS[activeComponent]}
-              />
-              <p className="text-xs text-stone-400 mt-1">Anyone on the team can write this. Your teammates will see it once the draft is generated.</p>
-              <button
-                onClick={() => generateDraft(activeComponent, teamId, resolutionNote)}
-                disabled={generating[activeComponent] || !resolutionNote.trim()}
-                className="mt-2 w-full border border-green-600 text-green-700 rounded-lg py-2 text-sm font-medium hover:bg-green-50 disabled:opacity-40 transition"
-              >
-                {generating[activeComponent] ? 'Generating agreement…' : ag?.draft_text ? 'Regenerate with new note' : 'Generate agreement draft'}
-              </button>
+              {isProjectManager ? (
+                <>
+                  <label className="block text-sm font-medium text-stone-700 mb-1">
+                    Resolution note
+                    <span className="text-stone-400 font-normal ml-1">: what did the team discuss and decide?</span>
+                  </label>
+                  <textarea
+                    className="w-full border border-amber-200 rounded-lg px-3 py-2 text-sm text-stone-800 resize-none focus:outline-none focus:ring-2 focus:ring-amber-400"
+                    rows={2}
+                    value={resolutionNote}
+                    onChange={e => setResolutionNote(e.target.value)}
+                    placeholder={RESOLUTION_PLACEHOLDERS[activeComponent]}
+                  />
+                  <p className="text-xs text-stone-400 mt-1">Your teammates will see this once you generate the agreement draft.</p>
+                  <button
+                    onClick={() => generateDraft(activeComponent, teamId, resolutionNote)}
+                    disabled={generating[activeComponent] || !resolutionNote.trim()}
+                    className="mt-2 w-full border border-green-600 text-green-700 rounded-lg py-2 text-sm font-medium hover:bg-green-50 disabled:opacity-40 transition"
+                  >
+                    {generating[activeComponent] ? 'Generating agreement…' : ag?.draft_text ? 'Regenerate with new note' : 'Generate agreement draft'}
+                  </button>
+                </>
+              ) : (
+                <div className="bg-stone-50 rounded-xl px-4 py-3 text-sm text-stone-500">
+                  {`Waiting for ${projectManagerName} to record what the team decided and generate a draft. You'll be able to approve it once it's ready.`}
+                </div>
+              )}
             </div>
           )}
 
@@ -385,33 +403,46 @@ export default function AgreePage() {
             </div>
           )}
 
-          {/* Agreement draft */}
+          {/* Agreement draft — editable for the project manager, read-only for others */}
           {ag?.final_text && (
             <div className="mb-4">
               <label className="block text-sm font-medium text-stone-700 mb-1">Agreement</label>
-              <textarea
-                className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm text-stone-800 resize-none focus:outline-none focus:ring-2 focus:ring-green-500"
-                rows={4}
-                value={editText}
-                onChange={e => { setEditText(e.target.value); setEditDirty(true); editDirtyRef.current = true }}
-                disabled={fullyApproved}
-              />
-              <div className="flex items-center justify-between mt-1">
-                {ag.recorded_by && (
-                  <span className="text-xs text-stone-400">
-                    Last edited by {members.find(m => m.id === ag.recorded_by)?.display_name ?? 'teammate'}
-                  </span>
-                )}
-                {!fullyApproved && editText !== ag?.final_text && (
-                  <button
-                    onClick={handleSaveText}
-                    disabled={saving}
-                    className="text-sm text-green-700 hover:underline ml-auto"
-                  >
-                    {saving ? 'Saving…' : 'Save edits'}
-                  </button>
-                )}
-              </div>
+              {isProjectManager ? (
+                <>
+                  <textarea
+                    className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm text-stone-800 resize-none focus:outline-none focus:ring-2 focus:ring-green-500"
+                    rows={4}
+                    value={editText}
+                    onChange={e => { setEditText(e.target.value); setEditDirty(true); editDirtyRef.current = true }}
+                    disabled={fullyApproved}
+                  />
+                  <div className="flex items-center justify-between mt-1">
+                    {ag.recorded_by && (
+                      <span className="text-xs text-stone-400">
+                        Last edited by {members.find(m => m.id === ag.recorded_by)?.display_name ?? 'teammate'}
+                      </span>
+                    )}
+                    {!fullyApproved && editText !== ag?.final_text && (
+                      <button
+                        onClick={handleSaveText}
+                        disabled={saving}
+                        className="text-sm text-green-700 hover:underline ml-auto"
+                      >
+                        {saving ? 'Saving…' : 'Save edits'}
+                      </button>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="w-full border border-stone-100 bg-stone-50 rounded-lg px-3 py-2 text-sm text-stone-800 whitespace-pre-wrap">
+                    {ag.final_text}
+                  </p>
+                  <p className="text-xs text-stone-400 mt-1">
+                    {`${projectManagerName} records the wording as the team's project manager. Read it over and approve when it looks right.`}
+                  </p>
+                </>
+              )}
             </div>
           )}
 
@@ -480,7 +511,7 @@ export default function AgreePage() {
           </div>
         ) : (
           <div className="text-center text-sm text-stone-400 py-2">
-            {CHAT_COMPONENTS.length - totalApproved} component{CHAT_COMPONENTS.length - totalApproved !== 1 ? 's' : ''} still need agreement
+            {`${CHAT_COMPONENTS.length - totalApproved} component${CHAT_COMPONENTS.length - totalApproved !== 1 ? 's' : ''} still need agreement`}
           </div>
         )}
       </div>

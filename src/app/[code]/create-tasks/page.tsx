@@ -397,7 +397,7 @@ export default function TasksPage() {
                 <p className="text-xs text-stone-400 mb-3">Any change to the list clears everyone&apos;s approval — review and approve again.</p>
                 {!allTasksReady ? (
                   <div className="text-center text-amber-700 bg-amber-50 border border-amber-200 rounded-lg text-sm py-2 px-3">
-                    {incompleteCount} task{incompleteCount !== 1 ? 's' : ''} still need{incompleteCount === 1 ? 's' : ''} an assignee and a deadline before the list can be approved
+                    {`${incompleteCount} task${incompleteCount !== 1 ? 's' : ''} still need${incompleteCount === 1 ? 's' : ''} an assignee and a deadline before the list can be approved`}
                   </div>
                 ) : tasksApproved ? (
                   <div className="text-center text-green-700 font-medium text-sm py-2">✓ Everyone has approved this list</div>

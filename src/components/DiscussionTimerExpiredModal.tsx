@@ -4,11 +4,11 @@ import { useId, useState } from 'react'
 import { Modal } from '@/components/Modal'
 
 interface DiscussionTimerExpiredModalProps {
-  isLeader: boolean
+  isProjectManager: boolean
   onExtend: () => void | Promise<void>
 }
 
-export function DiscussionTimerExpiredModal({ isLeader, onExtend }: DiscussionTimerExpiredModalProps) {
+export function DiscussionTimerExpiredModal({ isProjectManager, onExtend }: DiscussionTimerExpiredModalProps) {
   const [busy, setBusy] = useState(false)
   const headingId = useId()
 
@@ -27,7 +27,7 @@ export function DiscussionTimerExpiredModal({ isLeader, onExtend }: DiscussionTi
       <div className="p-5">
         <h2 id={headingId} className="text-lg font-bold text-stone-800">Need more time?</h2>
 
-        {isLeader ? (
+        {isProjectManager ? (
           <button
             onClick={() => run(onExtend)}
             disabled={busy}
@@ -36,7 +36,7 @@ export function DiscussionTimerExpiredModal({ isLeader, onExtend }: DiscussionTi
             {busy ? 'Adding time…' : 'Add 5 minutes'}
           </button>
         ) : (
-          <p className="text-sm text-stone-400 mt-4">Waiting on your team leader to add more time.</p>
+          <p className="text-sm text-stone-400 mt-4">Waiting on your project manager to add more time.</p>
         )}
       </div>
     </Modal>

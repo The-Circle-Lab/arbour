@@ -4,11 +4,11 @@ import { useId, useState } from 'react'
 import { Modal } from '@/components/Modal'
 
 interface DiscussionTimerStartModalProps {
-  isLeader: boolean
+  isProjectManager: boolean
   onStart: () => void | Promise<void>
 }
 
-export function DiscussionTimerStartModal({ isLeader, onStart }: DiscussionTimerStartModalProps) {
+export function DiscussionTimerStartModal({ isProjectManager, onStart }: DiscussionTimerStartModalProps) {
   const [busy, setBusy] = useState(false)
   const headingId = useId()
 
@@ -35,10 +35,10 @@ export function DiscussionTimerStartModal({ isLeader, onStart }: DiscussionTimer
           <h2 id={headingId} className="text-lg font-bold text-stone-800">Time to talk it through</h2>
         </div>
         <p className="text-sm text-stone-600">
-          Your team has real differences to work out. Clicking the button will start a timer for a <span className="font-semibold text-amber-700">15-minute</span> discussion. This gives your team limited time for your group to have a discussion and come up with resolution steps for <span className="font-semibold text-amber-700">all categories</span>.
+          Your team has real differences to work out. Clicking the button will start a timer for a <span className="font-semibold text-amber-700">15-minute</span> discussion. This gives your team limited time to have a discussion and come up with resolution steps for <span className="font-semibold text-amber-700">all categories</span>.
         </p>
 
-        {isLeader ? (
+        {isProjectManager ? (
           <button
             onClick={() => run(onStart)}
             disabled={busy}
@@ -47,7 +47,7 @@ export function DiscussionTimerStartModal({ isLeader, onStart }: DiscussionTimer
             {busy ? 'Starting…' : 'Start timer'}
           </button>
         ) : (
-          <p className="text-sm text-stone-400 mt-5 text-center">Waiting on your team leader to start the timer…</p>
+          <p className="text-sm text-stone-400 mt-5 text-center">Waiting on your project manager to start the timer…</p>
         )}
       </div>
     </Modal>

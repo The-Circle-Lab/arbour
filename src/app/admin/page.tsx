@@ -226,7 +226,7 @@ export default function AdminPage() {
           >
             <option value="">Select a team…</option>
             {teams.map(t => (
-              <option key={t.id} value={t.id}>{t.name} ({t.join_code})</option>
+              <option key={t.id} value={t.id}>{`${t.name} (${t.join_code})`}</option>
             ))}
           </select>
 
@@ -240,7 +240,7 @@ export default function AdminPage() {
             <option value="">Select a task…</option>
             {(scenario3Team?.tasks ?? []).map(task => (
               <option key={task.id} value={task.id}>
-                {task.title} — {STATUS_LABELS[task.status]}{task.deadline ? ` — due ${new Date(task.deadline).toLocaleString()}` : ' — no deadline'}
+                {`${task.title} — ${STATUS_LABELS[task.status]}${task.deadline ? ` — due ${new Date(task.deadline).toLocaleString()}` : ' — no deadline'}`}
               </option>
             ))}
           </select>
@@ -251,7 +251,7 @@ export default function AdminPage() {
             <div className="bg-green-50 text-green-900 rounded-xl p-4 mb-4 text-sm">
               <p className="font-semibold mb-1">Done</p>
               <p>&ldquo;{scenario3Result.taskTitle}&rdquo; now deadlines at {new Date(scenario3Result.deadline).toLocaleString()}.</p>
-              <p className="mt-1">{scenario3Result.approvals} member approval(s) on record.</p>
+              <p className="mt-1">{`${scenario3Result.approvals} member approval(s) on record.`}</p>
             </div>
           )}
 
@@ -277,7 +277,7 @@ export default function AdminPage() {
           >
             <option value="">Select a team…</option>
             {teams.map(t => (
-              <option key={t.id} value={t.id}>{t.name} ({t.join_code})</option>
+              <option key={t.id} value={t.id}>{`${t.name} (${t.join_code})`}</option>
             ))}
           </select>
 
@@ -300,8 +300,8 @@ export default function AdminPage() {
           {scenario5Result && (
             <div className="bg-green-50 text-green-900 rounded-xl p-4 mb-4 text-sm">
               <p className="font-semibold mb-1">Done</p>
-              <p>{scenario5Result.checkinsSeeded} check-in responses seeded · plant is {scenario5Result.plantState}.</p>
-              <p className="mt-1">{scenario5Result.tasksCompleted} task(s) marked done · {scenario5Result.tasksLeftInReview} left in review.</p>
+              <p>{`${scenario5Result.checkinsSeeded} check-in responses seeded · plant is ${scenario5Result.plantState}.`}</p>
+              <p className="mt-1">{`${scenario5Result.tasksCompleted} task(s) marked done · ${scenario5Result.tasksLeftInReview} left in review.`}</p>
               <p className="mt-1">Grade set to {scenario5Result.grade}.</p>
             </div>
           )}
