@@ -10,7 +10,7 @@ export type { DiscussionTimerState }
 interface DiscussionTimerProps {
   loading: boolean
   timer: DiscussionTimerState | null
-  isLeader: boolean
+  isProjectManager: boolean
   onStart: () => void | Promise<void>
   onExtend: () => void | Promise<void>
 }
@@ -25,7 +25,7 @@ function formatRemaining(ms: number): string {
 // Fetching is owned by the parent page — it already polls team/agreement
 // state on the same 4s cadence, so folding the timer into that call keeps
 // both in sync from a single snapshot instead of two independent polls.
-export function DiscussionTimer({ loading, timer, isLeader, onStart, onExtend }: DiscussionTimerProps) {
+export function DiscussionTimer({ loading, timer, isProjectManager, onStart, onExtend }: DiscussionTimerProps) {
   const [now, setNow] = useState(() => Date.now())
 
   useEffect(() => {
@@ -36,7 +36,7 @@ export function DiscussionTimer({ loading, timer, isLeader, onStart, onExtend }:
   if (loading) return null
 
   if (!timer) {
-    return <DiscussionTimerStartModal isLeader={isLeader} onStart={onStart} />
+    return <DiscussionTimerStartModal isProjectManager={isProjectManager} onStart={onStart} />
   }
 
   const remainingMs = new Date(timer.expiresAt).getTime() - now
@@ -46,7 +46,7 @@ export function DiscussionTimer({ loading, timer, isLeader, onStart, onExtend }:
       <div className="sticky top-0 z-40 bg-amber-50 border-b border-amber-200 text-amber-900 text-center py-2 text-sm font-semibold tracking-wide">
         {remainingMs > 0 ? `Time remaining: ${formatRemaining(remainingMs)}` : "Time's up"}
       </div>
-      {remainingMs <= 0 && <DiscussionTimerExpiredModal isLeader={isLeader} onExtend={onExtend} />}
+      {remainingMs <= 0 && <DiscussionTimerExpiredModal isProjectManager={isProjectManager} onExtend={onExtend} />}
     </>
   )
 }

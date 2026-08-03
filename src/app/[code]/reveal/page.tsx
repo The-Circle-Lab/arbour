@@ -40,7 +40,7 @@ export default function RevealPage() {
   const [loadingAI, setLoadingAI] = useState(false)
   const [activeComponent, setActiveComponent] = useState<ChatComponent>('object')
   const [waitingForTeam, setWaitingForTeam] = useState(true)
-  const [teamMembers, setTeamMembers] = useState<{ id: string; display_name: string }[]>([])
+  const [projectManagerId, setProjectManagerId] = useState<string | null>(null)
 
   useEffect(() => {
     if (loading) return
@@ -63,7 +63,7 @@ export default function RevealPage() {
       const teamRes = await fetch(`/api/teams/${code.toUpperCase()}`)
       const teamData = await teamRes.json()
       setTeamId(teamData.id)
-      setTeamMembers(teamData.members)
+      setProjectManagerId(teamData.project_manager_id ?? null)
 
       // Trigger AI generation (idempotent — returns cached if already done)
       fetch(`/api/reveal-ai/${code.toUpperCase()}`, { method: 'POST' }).catch(() => {})
@@ -94,12 +94,12 @@ export default function RevealPage() {
   }
 
   const flagged = aiResult?.flagged_components ?? []
-  const isLeader = teamMembers.length > 0 && teamMembers[0].id === membership?.member_id
+  const isProjectManager = !!projectManagerId && projectManagerId === membership?.member_id
 
   // Once there's something to discuss, wait for the discussion timer to
-  // start (the leader's own start click navigates immediately — this poll
-  // is what carries everyone else across once it does) and move the whole
-  // team into the Agree page together.
+  // start (the project manager's own start click navigates immediately —
+  // this poll is what carries everyone else across once it does) and move
+  // the whole team into the Agree page together.
   useEffect(() => {
     if (!aiResult || flagged.length === 0) return
     let cancelled = false
@@ -264,7 +264,7 @@ export default function RevealPage() {
         )}
 
         {aiResult && flagged.length > 0 && (
-          <DiscussionTimerStartModal isLeader={isLeader} onStart={handleStartTimer} />
+          <DiscussionTimerStartModal isProjectManager={isProjectManager} onStart={handleStartTimer} />
         )}
       </div>
     </main>

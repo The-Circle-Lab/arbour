@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server'
 import { query, queryOne } from '@/lib/db'
 import { reviseAgreement } from '@/lib/ai'
 import { ChatComponent } from '@/lib/chat-components'
-import { requireOwnedMember } from '@/lib/auth/team-access'
+import { requireOwnedMember, isProjectManager } from '@/lib/auth/team-access'
 import { clearAgreementApprovals } from '@/lib/agreement-approvals'
 
 // POST: revise a flagged component's agreement using the check-in discussion.
@@ -16,6 +16,10 @@ export async function POST(req: Request) {
   const owned = await requireOwnedMember(memberId)
   if (!owned || owned.teamId !== teamId) {
     return NextResponse.json({ error: 'Not authorized for this member' }, { status: 403 })
+  }
+
+  if (!(await isProjectManager(teamId, memberId))) {
+    return NextResponse.json({ error: 'Only the project manager can record this resolution' }, { status: 403 })
   }
 
   const current = await queryOne<{ final_text: string | null }>(

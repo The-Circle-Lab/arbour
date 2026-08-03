@@ -99,21 +99,11 @@ export async function extendTimer(
   return getActiveTimer(teamId, step, cycleNumber)
 }
 
-// Interim team-leader rule: earliest joined_at. Isolated in this one
-// function so the future real role/leader column only needs to change
-// here, not at every call site.
-export async function isTeamLeader(teamId: string, memberId: string): Promise<boolean> {
-  const leader = await queryOne<{ id: string }>(
-    'SELECT id FROM members WHERE team_id = $1 ORDER BY joined_at ASC LIMIT 1',
-    [teamId]
-  )
-  return leader?.id === memberId
-}
-
 // Whether (step, cycleNumber) is the discussion the team is actually in
-// right now, independent of who's asking. Leader-gating (isTeamLeader)
-// controls *who* can start a timer; this controls *when* — without it, a
-// stale page could start a timer for a step the team hasn't reached yet.
+// right now, independent of who's asking. Project-manager gating
+// (isProjectManager, in team-access.ts) controls *who* can start a timer;
+// this controls *when* — without it, a stale page could start a timer for
+// a step the team hasn't reached yet.
 export async function isCurrentDiscussionStep(
   teamId: string,
   step: DiscussionStep,

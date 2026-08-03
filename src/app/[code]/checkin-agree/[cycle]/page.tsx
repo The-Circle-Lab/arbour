@@ -27,6 +27,7 @@ export default function CheckinAgreePage() {
 
   const [teamId, setTeamId] = useState('')
   const [teamSize, setTeamSize] = useState(2)
+  const [projectManagerId, setProjectManagerId] = useState<string | null>(null)
   const [members, setMembers] = useState<{ id: string; display_name: string }[]>([])
   const [flagged, setFlagged] = useState<ChatComponent[]>([])
   const [comments, setComments] = useState<Record<string, string>>({})
@@ -48,6 +49,7 @@ export default function CheckinAgreePage() {
     setTeamId(teamData.id)
     setTeamSize(teamData.status.teamSize)
     setMembers(teamData.members)
+    setProjectManagerId(teamData.project_manager_id ?? null)
 
     const plantRes = await fetch(`/api/plant/${code.toUpperCase()}/${cycleNum}`)
     if (!plantRes.ok) return
@@ -127,7 +129,8 @@ export default function CheckinAgreePage() {
     return approvalsFor(comp).length >= teamSize
   }
   const allResolved = flagged.length > 0 && flagged.every(c => fullyApproved(c))
-  const isLeader = members.length > 0 && members[0].id === membership?.member_id
+  const isProjectManager = !!projectManagerId && projectManagerId === membership?.member_id
+  const projectManagerName = members.find(m => m.id === projectManagerId)?.display_name ?? 'your project manager'
 
   async function handleRevise() {
     if (!teamId || !active || !note.trim()) return
@@ -202,7 +205,7 @@ export default function CheckinAgreePage() {
         <DiscussionTimer
           loading={!timerLoaded}
           timer={timer}
-          isLeader={isLeader}
+          isProjectManager={isProjectManager}
           onStart={handleStartTimer}
           onExtend={handleExtendTimer}
         />
@@ -257,28 +260,34 @@ export default function CheckinAgreePage() {
               </p>
             </div>
 
-            {/* Revise the agreement, or approve as-is if it still holds */}
+            {/* Revise the agreement, or approve as-is if it still holds — project manager only */}
             {!fullyApproved(active) && (
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-stone-700 mb-1">
-                  What did you decide?
-                  <span className="text-stone-400 font-normal ml-1">: update the agreement, or approve as-is if it still holds</span>
-                </label>
-                <textarea
-                  className="w-full border border-amber-200 rounded-lg px-3 py-2 text-sm text-stone-800 resize-none focus:outline-none focus:ring-2 focus:ring-amber-400"
-                  rows={2}
-                  value={note}
-                  onChange={e => setNote(e.target.value)}
-                  placeholder="e.g. We're behind on the data work, so Alan takes testing and Annie picks up the remaining analysis."
-                />
-                <button
-                  onClick={handleRevise}
-                  disabled={revising || !note.trim()}
-                  className="mt-2 w-full border border-green-600 text-green-700 rounded-lg py-2 text-sm font-medium hover:bg-green-50 disabled:opacity-40 transition"
-                >
-                  {revising ? 'Updating agreement…' : 'Update agreement with this'}
-                </button>
-              </div>
+              isProjectManager ? (
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-stone-700 mb-1">
+                    What did the team decide?
+                    <span className="text-stone-400 font-normal ml-1">: update the agreement, or approve as-is if it still holds</span>
+                  </label>
+                  <textarea
+                    className="w-full border border-amber-200 rounded-lg px-3 py-2 text-sm text-stone-800 resize-none focus:outline-none focus:ring-2 focus:ring-amber-400"
+                    rows={2}
+                    value={note}
+                    onChange={e => setNote(e.target.value)}
+                    placeholder="e.g. We're behind on the data work, so Alan takes testing and Annie picks up the remaining analysis."
+                  />
+                  <button
+                    onClick={handleRevise}
+                    disabled={revising || !note.trim()}
+                    className="mt-2 w-full border border-green-600 text-green-700 rounded-lg py-2 text-sm font-medium hover:bg-green-50 disabled:opacity-40 transition"
+                  >
+                    {revising ? 'Updating agreement…' : 'Update agreement with this'}
+                  </button>
+                </div>
+              ) : (
+                <p className="text-xs text-stone-400 mb-4">
+                  {`${projectManagerName} records what the team decides and updates the wording. Read it over and approve when it looks right.`}
+                </p>
+              )
             )}
 
             {/* Approval */}
