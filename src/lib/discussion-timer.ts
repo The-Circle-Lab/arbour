@@ -79,7 +79,7 @@ export async function extendTimer(
 ): Promise<DiscussionTimerState | null> {
   const extended = await withTransaction(async tx => {
     const rows = await tx.query<{ id: string }>(
-      `UPDATE discussion_timers SET expires_at = expires_at + make_interval(mins => $4)
+      `UPDATE discussion_timers SET expires_at = NOW() + make_interval(mins => $4)
        WHERE team_id = $1 AND step = $2 AND cycle_number IS NOT DISTINCT FROM $3
          AND resolved_at IS NULL AND expires_at <= NOW()
        RETURNING id`,
