@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { validate as isUuid } from 'uuid'
 import { query, queryOne } from '@/lib/db'
-import { requireTeamMemberByTeamId } from '@/lib/auth/team-access'
+import { requireTeamMemberByTeamId, isProjectManager } from '@/lib/auth/team-access'
 import { toDeadlineUtc } from '@/lib/dates'
 import { clearTaskApprovals } from '@/lib/task-approvals'
 import { EDITABLE_STATUSES, type TaskStatus } from '@/lib/task-status'
@@ -24,6 +24,13 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const membership = await requireTeamMemberByTeamId(task.team_id)
   if (!membership) return NextResponse.json({ error: 'Not authorized for this team' }, { status: 403 })
 
+  const assignedToProvided = assignedTo !== undefined
+  const deadlineProvided = deadline !== undefined
+  if (assignedToProvided || deadlineProvided) {
+    const pm = await isProjectManager(task.team_id, membership.memberId)
+    if (!pm) return NextResponse.json({ error: 'Only the project manager can assign tasks or set deadlines' }, { status: 403 })
+  }
+
   const titleProvided = title !== undefined
   if (titleProvided && (typeof title !== 'string' || !title.trim())) {
     return NextResponse.json({ error: 'Title cannot be empty' }, { status: 400 })
@@ -42,7 +49,6 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   // Reassigning a submitted task to someone else re-opens it for the new
   // assignee — otherwise status stays 'submitted' forever and nothing else
   // in the app ever lets the new assignee submit their own work for it.
-  const assignedToProvided = assignedTo !== undefined
   const reopensOnReassign =
     assignedToProvided && (assignedTo || null) !== task.assigned_to && task.status === 'submitted' && status === undefined
   const effectiveStatus = reopensOnReassign ? 'todo' : (status ?? null)
@@ -83,6 +89,9 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
 
   const membership = await requireTeamMemberByTeamId(task.team_id)
   if (!membership) return NextResponse.json({ error: 'Not authorized for this team' }, { status: 403 })
+
+  const pm = await isProjectManager(task.team_id, membership.memberId)
+  if (!pm) return NextResponse.json({ error: 'Only the project manager can remove tasks' }, { status: 403 })
 
   await query('DELETE FROM tasks WHERE id = $1', [id])
   await clearTaskApprovals(task.team_id)
