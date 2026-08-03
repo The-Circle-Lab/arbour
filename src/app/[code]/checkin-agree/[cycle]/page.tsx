@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { useSession, getMembership } from '@/lib/session'
 import { COMPONENT_LABELS, COMPONENT_DESCRIPTIONS, ChatComponent } from '@/lib/chat-components'
 import { WaitingRoom } from '@/components/WaitingRoom'
+import { DiscussionTimer, DiscussionTimerState } from '@/components/DiscussionTimer'
 
 interface Agreement {
   component: string
@@ -35,6 +36,8 @@ export default function CheckinAgreePage() {
   const [note, setNote] = useState('')
   const [revising, setRevising] = useState(false)
   const [ready, setReady] = useState(false)
+  const [timer, setTimer] = useState<DiscussionTimerState | null>(null)
+  const [timerLoaded, setTimerLoaded] = useState(false)
 
   const activeRef = useRef<ChatComponent | null>(null)
 
@@ -64,8 +67,41 @@ export default function CheckinAgreePage() {
       for (const ag of agData.agreements) map[ag.component] = ag
       setAgreements(map)
       setApprovals(agData.approvals)
+
+      // Same poll as the rest of this page's state, so the timer and
+      // allResolved (computed below from flagged/approvals) always reflect
+      // one consistent snapshot instead of two independently-timed polls.
+      const resolved = flaggedList.length > 0 && flaggedList.every((comp: ChatComponent) =>
+        agData.approvals.filter((a: Approval) => a.component === comp).length >= teamData.status.teamSize
+      )
+      // A cycle with nothing flagged never reaches the DiscussionTimer render
+      // path at all (see the early return below) — don't poll for it either.
+      if (flaggedList.length > 0 && !resolved) {
+        const params = new URLSearchParams({ step: 'CHECKIN_AGREE', cycle: String(cycleNum) })
+        const timerRes = await fetch(`/api/teams/${code.toUpperCase()}/discussion-timer?${params.toString()}`)
+        if (timerRes.ok) setTimer(await timerRes.json())
+      }
+      setTimerLoaded(true)
     }
     setReady(true)
+  }
+
+  async function handleStartTimer() {
+    await fetch(`/api/teams/${code.toUpperCase()}/discussion-timer/start`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ step: 'CHECKIN_AGREE', cycleNumber: cycleNum }),
+    })
+    await loadAll()
+  }
+
+  async function handleExtendTimer() {
+    await fetch(`/api/teams/${code.toUpperCase()}/discussion-timer/extend`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ step: 'CHECKIN_AGREE', cycleNumber: cycleNum }),
+    })
+    await loadAll()
   }
 
   useEffect(() => {
@@ -91,6 +127,7 @@ export default function CheckinAgreePage() {
     return approvalsFor(comp).length >= teamSize
   }
   const allResolved = flagged.length > 0 && flagged.every(c => fullyApproved(c))
+  const isLeader = members.length > 0 && members[0].id === membership?.member_id
 
   async function handleRevise() {
     if (!teamId || !active || !note.trim()) return
@@ -160,8 +197,17 @@ export default function CheckinAgreePage() {
   const myApproval = active ? approvalsFor(active).some(a => a.member_id === membership?.member_id) : false
 
   return (
-    <main className="min-h-screen bg-stone-50 p-4 md:p-8">
-      <div className="max-w-3xl mx-auto">
+    <main className="min-h-screen bg-stone-50">
+      {!allResolved && (
+        <DiscussionTimer
+          loading={!timerLoaded}
+          timer={timer}
+          isLeader={isLeader}
+          onStart={handleStartTimer}
+          onExtend={handleExtendTimer}
+        />
+      )}
+      <div className="max-w-3xl mx-auto p-4 md:p-8">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-stone-800">Re-align after check-in</h1>
           <p className="text-stone-500 text-sm mt-1">

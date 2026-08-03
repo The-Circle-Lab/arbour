@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { queryOne } from '@/lib/db'
 import { requireOwnedMember } from '@/lib/auth/team-access'
 import { recordAgreementApproval, withdrawAgreementApproval } from '@/lib/agreement-approvals'
+import { resolveDiscussionTimersIfDone } from '@/lib/discussion-timer'
 
 export async function POST(req: Request) {
   const { teamId, component, memberId } = await req.json()
@@ -18,6 +19,7 @@ export async function POST(req: Request) {
   if (!agreement) return NextResponse.json({ error: 'No agreement draft to approve' }, { status: 400 })
 
   await recordAgreementApproval(teamId, component, memberId)
+  await resolveDiscussionTimersIfDone(teamId)
 
   return NextResponse.json({ ok: true })
 }
