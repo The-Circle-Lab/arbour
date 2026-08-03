@@ -39,8 +39,50 @@ export async function POST(req: Request) {
 
 export async function PATCH(req: Request) {
   try {
-    const { teamId, projectTitle, deadline, assignmentBrief, plantVote } = await req.json()
+    const { teamId, projectTitle, deadline, assignmentBrief, plantVote, projectManagerVote } = await req.json()
     if (!teamId) return NextResponse.json({ error: 'teamId required' }, { status: 400 })
+
+    if (projectManagerVote) {
+      const { memberId, votedForMemberId } = projectManagerVote as { memberId: string; votedForMemberId: string }
+
+      const owned = await requireOwnedMember(memberId)
+      if (!owned || owned.teamId !== teamId) {
+        return NextResponse.json({ error: 'Not authorized for this member' }, { status: 403 })
+      }
+
+      const team = await queryOne<{ project_manager_votes: Record<string, string> | null; project_manager_id: string | null }>(
+        'SELECT project_manager_votes, project_manager_id FROM teams WHERE id = $1', [teamId]
+      )
+
+      // The project manager is fixed for the life of the group once elected — no re-votes.
+      if (team?.project_manager_id) {
+        return NextResponse.json({ ok: true, agreed: true, projectManagerId: team.project_manager_id })
+      }
+
+      const members = await query<{ id: string }>('SELECT id FROM members WHERE team_id = $1', [teamId])
+      if (!members.some(m => m.id === votedForMemberId)) {
+        return NextResponse.json({ error: 'votedForMemberId is not a member of this team' }, { status: 400 })
+      }
+
+      const votes: Record<string, string> = { ...(team?.project_manager_votes ?? {}), [memberId]: votedForMemberId }
+
+      const allVoted = members.every(m => votes[m.id])
+      const agreed = allVoted && new Set(Object.values(votes)).size === 1
+
+      if (agreed) {
+        await query(
+          'UPDATE teams SET project_manager_votes = $1, project_manager_id = $2 WHERE id = $3',
+          [JSON.stringify(votes), votedForMemberId, teamId]
+        )
+      } else {
+        await query(
+          'UPDATE teams SET project_manager_votes = $1 WHERE id = $2',
+          [JSON.stringify(votes), teamId]
+        )
+      }
+
+      return NextResponse.json({ ok: true, agreed, votes, projectManagerId: agreed ? votedForMemberId : null })
+    }
 
     if (plantVote) {
       const { memberId, plantType } = plantVote as { memberId: string; plantType: string }

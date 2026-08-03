@@ -1,4 +1,4 @@
-import { query } from './db'
+import { query, queryOne } from './db'
 import { CHAT_COMPONENTS } from './chat-components'
 import { countTaskApprovals } from './task-approvals'
 
@@ -15,6 +15,7 @@ export type Phase =
 
 interface TeamStatus {
   phase: Phase
+  hasProjectManager: boolean
   teamSize: number
   reflectionsSubmitted: number
   allReflected: boolean
@@ -36,6 +37,12 @@ export async function getTeamStatus(teamId: string): Promise<TeamStatus> {
     'SELECT COUNT(*)::int AS team_size FROM members WHERE team_id = $1',
     [teamId]
   )
+
+  const teamRow = await queryOne<{ project_manager_id: string | null }>(
+    'SELECT project_manager_id FROM teams WHERE id = $1',
+    [teamId]
+  )
+  const hasProjectManager = !!teamRow?.project_manager_id
 
   const reflRows = await query<{ count: number }>(
     `SELECT COUNT(DISTINCT member_id)::int AS count
@@ -116,6 +123,7 @@ export async function getTeamStatus(teamId: string): Promise<TeamStatus> {
 
   return {
     phase,
+    hasProjectManager,
     teamSize: team_size,
     reflectionsSubmitted,
     allReflected,
