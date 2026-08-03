@@ -214,7 +214,7 @@ export default function CheckinAgreePage() {
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-stone-800">Re-align after check-in</h1>
           <p className="text-stone-500 text-sm mt-1">
-            Cycle {cycleNum} · {flagged.filter(c => fullyApproved(c)).length} of {flagged.length} re-agreed · talk each one through, then approve the updated agreement.
+            {`Cycle ${cycleNum} · ${flagged.filter(c => fullyApproved(c)).length} of ${flagged.length} re-agreed · talk each one through, then approve the updated agreement.`}
           </p>
         </div>
 
@@ -342,7 +342,7 @@ export default function CheckinAgreePage() {
           </button>
         ) : (
           <div className="text-center text-sm text-stone-400 py-2">
-            {flagged.filter(c => !fullyApproved(c)).length} still need to be re-agreed
+            {`${flagged.filter(c => !fullyApproved(c)).length} still need to be re-agreed`}
           </div>
         )}
       </div>

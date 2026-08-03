@@ -504,7 +504,7 @@ export default function AgreePage() {
           </div>
         ) : (
           <div className="text-center text-sm text-stone-400 py-2">
-            {CHAT_COMPONENTS.length - totalApproved} component{CHAT_COMPONENTS.length - totalApproved !== 1 ? 's' : ''} still need agreement
+            {`${CHAT_COMPONENTS.length - totalApproved} component${CHAT_COMPONENTS.length - totalApproved !== 1 ? 's' : ''} still need agreement`}
           </div>
         )}
       </div>

@@ -80,7 +80,7 @@ export default function PlantPage() {
     <main className={`min-h-screen ${STATE_BG[plantData.computed_state]} p-6 flex flex-col items-center`}>
       <div className="w-full max-w-xl">
         <div className="flex items-center justify-between mb-2">
-          <p className="text-xs text-stone-400 uppercase tracking-wide font-medium">Cycle {cycleNum} · Team health</p>
+          <p className="text-xs text-stone-400 uppercase tracking-wide font-medium">{`Cycle ${cycleNum} · Team health`}</p>
           <button
             onClick={() => router.push(`/${code}/charter`)}
             className="text-xs text-stone-400 hover:text-stone-600 underline"

@@ -68,7 +68,7 @@ export function TaskSubmittedModal({
         <p className="text-xs text-stone-400 uppercase tracking-wide font-medium mb-1">Task submitted</p>
         <h2 id={headingId} className="text-lg font-bold text-stone-800">{taskTitle}</h2>
         <p className="text-sm text-stone-500 mt-0.5">
-          Submitted by {submitterName} · {submittedLabel}
+          {`Submitted by ${submitterName} · ${submittedLabel}`}
         </p>
 
         <div className="bg-stone-50 border border-stone-100 rounded-xl p-4 mt-4">
@@ -97,7 +97,7 @@ export function TaskSubmittedModal({
         {votes.length > 0 && (
           <div className="mt-4">
             <p className="text-xs text-stone-400 uppercase tracking-wide font-medium mb-2">
-              {votes.filter(v => v.vote === 'approve').length} of {eligibleVoters} approved
+              {`${votes.filter(v => v.vote === 'approve').length} of ${eligibleVoters} approved`}
             </p>
             <div className="flex flex-col gap-1.5">
               {votes.map((v, i) => (
@@ -186,7 +186,7 @@ export function TaskSubmittedModal({
 
         {myVote !== null && (
           <p className="text-sm text-stone-500 mt-5">
-            You already {myVote === 'approve' ? 'approved' : 'declined'} this submission.
+            {`You already ${myVote === 'approve' ? 'approved' : 'declined'} this submission.`}
           </p>
         )}
 

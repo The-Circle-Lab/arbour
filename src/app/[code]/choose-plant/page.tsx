@@ -119,13 +119,13 @@ export default function ChoosePlantPage() {
 
         {myVote && !everyoneVoted && (
           <div className="text-center text-sm text-stone-500 bg-white rounded-xl border border-stone-100 py-4 px-5">
-            Waiting for {notYetVoted.map(m => m.display_name).join(', ')} to vote…
+            {`Waiting for ${notYetVoted.map(m => m.display_name).join(', ')} to vote…`}
           </div>
         )}
 
         {split && (
           <div className="text-center text-sm text-amber-700 bg-amber-50 rounded-xl border border-amber-100 py-4 px-5">
-            The team is split across {distinctChoices.size} plants. Talk it over and tap to consolidate on one.
+            {`The team is split across ${distinctChoices.size} plants. Talk it over and tap to consolidate on one.`}
           </div>
         )}
       </div>
