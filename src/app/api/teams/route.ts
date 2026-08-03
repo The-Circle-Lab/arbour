@@ -3,6 +3,12 @@ import { query, queryOne, withTransaction } from '@/lib/db'
 import { requireUser } from '@/lib/auth/jwt'
 import { requireOwnedMember, requireTeamMemberByTeamId } from '@/lib/auth/team-access'
 
+// Advisory-lock classid for team vote writes (plant / project-manager).
+// Paired with pg_advisory_xact_lock's 2-arg form so this can't collide with
+// plant-health.ts's LEDGER_LOCK_CLASS (1) or task_deadline_events' unclassed
+// single-arg per-task lock — see the comment on LEDGER_LOCK_CLASS.
+const TEAM_VOTE_LOCK_CLASS = 2
+
 function isPlantVoteBody(value: unknown): value is { memberId: string; plantType: string } {
   return typeof value === 'object' && value !== null &&
     'memberId' in value && 'plantType' in value &&
@@ -76,7 +82,7 @@ export async function PATCH(req: Request) {
       const result = await withTransaction<ProjectManagerVoteResult>(async tx => {
         // Advisory-locked so two members voting at the same instant don't
         // clobber each other's entry in the shared votes blob.
-        await tx.query('SELECT pg_advisory_xact_lock(hashtext($1))', [teamId])
+        await tx.query('SELECT pg_advisory_xact_lock($1, hashtext($2))', [TEAM_VOTE_LOCK_CLASS, teamId])
 
         const [team] = await tx.query<{ project_manager_votes: Record<string, string> | null; project_manager_id: string | null }>(
           'SELECT project_manager_votes, project_manager_id FROM teams WHERE id = $1', [teamId]
@@ -129,7 +135,7 @@ export async function PATCH(req: Request) {
       const result = await withTransaction<PlantVoteResult>(async tx => {
         // Advisory-locked so two members voting at the same instant don't
         // clobber each other's entry in the shared votes blob.
-        await tx.query('SELECT pg_advisory_xact_lock(hashtext($1))', [teamId])
+        await tx.query('SELECT pg_advisory_xact_lock($1, hashtext($2))', [TEAM_VOTE_LOCK_CLASS, teamId])
 
         const [team] = await tx.query<{ plant_votes: Record<string, string> | null; project_manager_id: string | null }>(
           'SELECT plant_votes, project_manager_id FROM teams WHERE id = $1', [teamId]

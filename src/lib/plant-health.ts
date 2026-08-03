@@ -9,7 +9,9 @@ const DEFAULT_LEVEL = 3
 
 // Advisory-lock classid for plant-health ledger writes. Paired with
 // pg_advisory_xact_lock's 2-arg form so this never collides with unrelated
-// single-arg advisory locks elsewhere (e.g. task_deadline_events' per-task lock).
+// single-arg advisory locks elsewhere (e.g. task_deadline_events' per-task
+// lock), or with other classed locks (e.g. api/teams/route.ts's
+// TEAM_VOTE_LOCK_CLASS, 2).
 const LEDGER_LOCK_CLASS = 1
 
 export function levelToState(level: number): PlantState {
