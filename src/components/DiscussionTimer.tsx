@@ -3,12 +3,9 @@
 import { useEffect, useState } from 'react'
 import { DiscussionTimerStartModal } from '@/components/DiscussionTimerStartModal'
 import { DiscussionTimerExpiredModal } from '@/components/DiscussionTimerExpiredModal'
+import type { DiscussionTimerState } from '@/lib/discussion-timer'
 
-export interface DiscussionTimerState {
-  startedAt: string
-  expiresAt: string
-  extensionCount: number
-}
+export type { DiscussionTimerState }
 
 interface DiscussionTimerProps {
   loading: boolean

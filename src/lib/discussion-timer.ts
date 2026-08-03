@@ -1,4 +1,4 @@
-import { query, queryOne } from './db'
+import { query, queryOne, withTransaction } from './db'
 import { getTeamStatus } from './phase'
 
 // Single owning module for discussion_timers / discussion_timer_extensions —
@@ -69,25 +69,33 @@ export async function startTimer(
 
 // Only succeeds once the timer has actually expired — rejects (returns
 // null) a stray double-click that would otherwise extend a timer that
-// still has time left.
+// still has time left. The expires_at bump and its audit-trail row are
+// committed together, so a failure between the two can never leave a
+// timer extended with no matching extension record.
 export async function extendTimer(
   teamId: string,
   step: DiscussionStep,
   cycleNumber: number | null
 ): Promise<DiscussionTimerState | null> {
-  const updated = await queryOne<{ id: string }>(
-    `UPDATE discussion_timers SET expires_at = expires_at + make_interval(mins => $4)
-     WHERE team_id = $1 AND step = $2 AND cycle_number IS NOT DISTINCT FROM $3
-       AND resolved_at IS NULL AND expires_at <= NOW()
-     RETURNING id`,
-    [teamId, step, cycleNumber, EXTENSION_MINUTES]
-  )
-  if (!updated) return null
+  const extended = await withTransaction(async tx => {
+    const rows = await tx.query<{ id: string }>(
+      `UPDATE discussion_timers SET expires_at = expires_at + make_interval(mins => $4)
+       WHERE team_id = $1 AND step = $2 AND cycle_number IS NOT DISTINCT FROM $3
+         AND resolved_at IS NULL AND expires_at <= NOW()
+       RETURNING id`,
+      [teamId, step, cycleNumber, EXTENSION_MINUTES]
+    )
+    const updated = rows[0] ?? null
+    if (!updated) return false
 
-  await query(
-    'INSERT INTO discussion_timer_extensions (timer_id, minutes_added) VALUES ($1, $2)',
-    [updated.id, EXTENSION_MINUTES]
-  )
+    await tx.query(
+      'INSERT INTO discussion_timer_extensions (timer_id, minutes_added) VALUES ($1, $2)',
+      [updated.id, EXTENSION_MINUTES]
+    )
+    return true
+  })
+  if (!extended) return null
+
   return getActiveTimer(teamId, step, cycleNumber)
 }
 
