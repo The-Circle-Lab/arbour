@@ -40,21 +40,31 @@ export async function getActiveTimer(
   return { startedAt: row.started_at, expiresAt: row.expires_at, extensionCount: row.extension_count }
 }
 
-// Insert-or-get: ON CONFLICT targets the partial unique index on (team_id,
-// step, cycle_number) WHERE resolved_at IS NULL, so a second call (or a
-// concurrent one) is a no-op rather than a duplicate active timer.
+// Insert-or-get, atomically: ON CONFLICT targets the partial unique index on
+// (team_id, step, cycle_number) WHERE resolved_at IS NULL. DO UPDATE (rather
+// than DO NOTHING) with a no-op self-assignment makes RETURNING fire on the
+// conflict path too, so this is one round trip that always yields a row —
+// no gap where a concurrent resolve could race a separate follow-up SELECT.
 export async function startTimer(
   teamId: string,
   step: DiscussionStep,
   cycleNumber: number | null
 ): Promise<DiscussionTimerState> {
-  await query(
+  const row = await queryOne<{ id: string; started_at: string; expires_at: string }>(
     `INSERT INTO discussion_timers (team_id, step, cycle_number, started_at, expires_at)
      VALUES ($1, $2, $3, NOW(), NOW() + INTERVAL '15 minutes')
-     ON CONFLICT (team_id, step, cycle_number) WHERE resolved_at IS NULL DO NOTHING`,
+     ON CONFLICT (team_id, step, cycle_number) WHERE resolved_at IS NULL
+     DO UPDATE SET started_at = discussion_timers.started_at
+     RETURNING id, started_at, expires_at`,
     [teamId, step, cycleNumber]
   )
-  return (await getActiveTimer(teamId, step, cycleNumber))!
+  if (!row) throw new Error('startTimer: insert-or-update did not return a row')
+
+  const ext = await queryOne<{ count: number }>(
+    'SELECT COUNT(*)::int AS count FROM discussion_timer_extensions WHERE timer_id = $1',
+    [row.id]
+  )
+  return { startedAt: row.started_at, expiresAt: row.expires_at, extensionCount: ext?.count ?? 0 }
 }
 
 // Only succeeds once the timer has actually expired — rejects (returns
@@ -90,6 +100,22 @@ export async function isTeamLeader(teamId: string, memberId: string): Promise<bo
     [teamId]
   )
   return leader?.id === memberId
+}
+
+// Whether (step, cycleNumber) is the discussion the team is actually in
+// right now, independent of who's asking. Leader-gating (isTeamLeader)
+// controls *who* can start a timer; this controls *when* — without it, a
+// stale page could start a timer for a step the team hasn't reached yet.
+export async function isCurrentDiscussionStep(
+  teamId: string,
+  step: DiscussionStep,
+  cycleNumber: number | null
+): Promise<boolean> {
+  const status = await getTeamStatus(teamId)
+  if (step === 'AGREEING') return cycleNumber === null && !status.allAgreed
+  if (cycleNumber === 1) return status.hasFlagsAfterCycle1 && !status.plant1Resolved
+  if (cycleNumber === 2) return status.hasFlagsAfterCycle2 && !status.plant2Resolved
+  return false
 }
 
 // Called after recording an agreement approval. Reuses getTeamStatus's

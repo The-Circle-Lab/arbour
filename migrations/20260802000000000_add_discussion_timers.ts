@@ -10,7 +10,12 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       started_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       expires_at   TIMESTAMPTZ NOT NULL,
       resolved_at  TIMESTAMPTZ,
-      created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      -- AGREEING never has a cycle; CHECKIN_AGREE always has cycle 1 or 2.
+      CHECK (
+        (step = 'AGREEING' AND cycle_number IS NULL) OR
+        (step = 'CHECKIN_AGREE' AND cycle_number IN (1, 2))
+      )
     );
 
     -- Only one active (unresolved) timer per team+step+cycle. NULLS NOT

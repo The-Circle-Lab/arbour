@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { requireTeamMember } from '@/lib/auth/team-access'
-import { startTimer, isTeamLeader, isDiscussionStep, isValidCycleNumber } from '@/lib/discussion-timer'
+import { startTimer, isTeamLeader, isCurrentDiscussionStep, isDiscussionStep, isValidCycleNumber } from '@/lib/discussion-timer'
 
 export async function POST(req: Request, { params }: { params: Promise<{ code: string }> }) {
   const { code } = await params
@@ -15,6 +15,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ code: s
 
   const leader = await isTeamLeader(membership.teamId, membership.memberId)
   if (!leader) return NextResponse.json({ error: 'Only the team leader can start the timer' }, { status: 403 })
+
+  const isCurrent = await isCurrentDiscussionStep(membership.teamId, step, cycleNumber)
+  if (!isCurrent) return NextResponse.json({ error: "Not the team's current discussion step" }, { status: 409 })
 
   const timer = await startTimer(membership.teamId, step, cycleNumber)
   return NextResponse.json(timer)
