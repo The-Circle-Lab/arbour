@@ -9,6 +9,13 @@ interface Member {
   display_name: string
 }
 
+interface TeamResponse {
+  id: string
+  members: Member[]
+  project_manager_id: string | null
+  project_manager_votes: Record<string, string> | null
+}
+
 export default function ChooseProjectManagerPage() {
   const { code } = useParams<{ code: string }>()
   const router = useRouter()
@@ -32,7 +39,7 @@ export default function ChooseProjectManagerPage() {
   async function load() {
     const res = await fetch(`/api/teams/${code.toUpperCase()}`)
     if (!res.ok) return
-    const data = await res.json()
+    const data: TeamResponse = await res.json()
     setTeamId(data.id)
     setMembers(data.members)
     const v: Record<string, string> = data.project_manager_votes ?? {}

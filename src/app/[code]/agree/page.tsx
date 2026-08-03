@@ -29,6 +29,13 @@ interface Reflection {
 
 type ComponentStatus = 'needs_resolution' | 'needs_draft' | 'needs_approval' | 'approved'
 
+interface TeamResponse {
+  id: string
+  members: { id: string; display_name: string }[]
+  status: { teamSize: number }
+  project_manager_id: string | null
+}
+
 const RESOLUTION_PLACEHOLDERS: Record<ChatComponent, string> = {
   object: 'e.g. Annie wants a polished final product, Alan wants to learn new skills. We agreed to aim for both by splitting research and presentation.',
   subject: 'e.g. Annie sees herself leading coordination, Alan prefers deep execution. We agreed on a lead/support split that rotates per task.',
@@ -76,7 +83,7 @@ export default function AgreePage() {
   async function loadAll() {
     const teamRes = await fetch(`/api/teams/${code.toUpperCase()}`)
     if (!teamRes.ok) return
-    const teamData = await teamRes.json()
+    const teamData: TeamResponse = await teamRes.json()
     setTeamId(teamData.id)
     setTeamSize(teamData.status.teamSize)
     setMembers(teamData.members)
