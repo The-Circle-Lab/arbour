@@ -33,6 +33,14 @@ export default function ChoosePlantPage() {
     const data = await res.json()
     setTeamId(data.id)
     setMembers(data.members)
+
+    // A project manager must be chosen first — guards against landing here
+    // directly (e.g. a stale link) without going through that step.
+    if (!data.project_manager_id) {
+      router.push(`/${code}/choose-project-manager`)
+      return
+    }
+
     const v: Record<string, string> = data.plant_votes ?? {}
     setVotes(v)
     if (membership && v[membership.member_id]) setMyVote(v[membership.member_id] as PlantType)
