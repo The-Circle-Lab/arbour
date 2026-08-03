@@ -6,6 +6,16 @@ import { getTeamStatus } from './phase'
 
 export type DiscussionStep = 'AGREEING' | 'CHECKIN_AGREE'
 
+const DISCUSSION_STEPS: readonly string[] = ['AGREEING', 'CHECKIN_AGREE']
+
+export function isDiscussionStep(value: unknown): value is DiscussionStep {
+  return typeof value === 'string' && DISCUSSION_STEPS.includes(value)
+}
+
+export function isValidCycleNumber(value: unknown): value is number | null {
+  return value === null || value === 1 || value === 2
+}
+
 export interface DiscussionTimerState {
   startedAt: string
   expiresAt: string
@@ -56,11 +66,11 @@ export async function extendTimer(
   cycleNumber: number | null
 ): Promise<DiscussionTimerState | null> {
   const updated = await queryOne<{ id: string }>(
-    `UPDATE discussion_timers SET expires_at = expires_at + INTERVAL '5 minutes'
+    `UPDATE discussion_timers SET expires_at = expires_at + make_interval(mins => $4)
      WHERE team_id = $1 AND step = $2 AND cycle_number IS NOT DISTINCT FROM $3
        AND resolved_at IS NULL AND expires_at <= NOW()
      RETURNING id`,
-    [teamId, step, cycleNumber]
+    [teamId, step, cycleNumber, EXTENSION_MINUTES]
   )
   if (!updated) return null
 

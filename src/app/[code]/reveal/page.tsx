@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useSession, getMembership } from '@/lib/session'
 import { CHAT_COMPONENTS, COMPONENT_LABELS, COMPONENT_DESCRIPTIONS, ChatComponent } from '@/lib/chat-components'
+import { DiscussionTimerStartModal } from '@/components/DiscussionTimerStartModal'
 
 const NEGOTIATION_NUDGES: Record<ChatComponent, string> = {
   object:            'This difference is worth talking about: what does success actually mean to each of you, in practice?',
@@ -39,6 +40,7 @@ export default function RevealPage() {
   const [loadingAI, setLoadingAI] = useState(false)
   const [activeComponent, setActiveComponent] = useState<ChatComponent>('object')
   const [waitingForTeam, setWaitingForTeam] = useState(true)
+  const [teamMembers, setTeamMembers] = useState<{ id: string; display_name: string }[]>([])
 
   useEffect(() => {
     if (loading) return
@@ -61,6 +63,7 @@ export default function RevealPage() {
       const teamRes = await fetch(`/api/teams/${code.toUpperCase()}`)
       const teamData = await teamRes.json()
       setTeamId(teamData.id)
+      setTeamMembers(teamData.members)
 
       // Trigger AI generation (idempotent — returns cached if already done)
       fetch(`/api/reveal-ai/${code.toUpperCase()}`, { method: 'POST' }).catch(() => {})
@@ -91,6 +94,36 @@ export default function RevealPage() {
   }
 
   const flagged = aiResult?.flagged_components ?? []
+  const isLeader = teamMembers.length > 0 && teamMembers[0].id === membership?.member_id
+
+  // Once there's something to discuss, wait for the discussion timer to
+  // start (the leader's own start click navigates immediately — this poll
+  // is what carries everyone else across once it does) and move the whole
+  // team into the Agree page together.
+  useEffect(() => {
+    if (!aiResult || flagged.length === 0) return
+    let cancelled = false
+
+    async function poll() {
+      const res = await fetch(`/api/teams/${code.toUpperCase()}/discussion-timer?step=AGREEING`)
+      if (cancelled || !res.ok) return
+      const timer = await res.json()
+      if (timer) router.push(`/${code}/agree`)
+    }
+
+    poll()
+    const interval = setInterval(poll, 3000)
+    return () => { cancelled = true; clearInterval(interval) }
+  }, [aiResult, flagged.length, code, router])
+
+  async function handleStartTimer() {
+    await fetch(`/api/teams/${code.toUpperCase()}/discussion-timer/start`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ step: 'AGREEING', cycleNumber: null }),
+    })
+    router.push(`/${code}/agree`)
+  }
 
   function getResponsesForComponent(component: ChatComponent) {
     return reflections.filter(r => r.component === component)
@@ -110,10 +143,6 @@ export default function RevealPage() {
       })
       .filter(Boolean)
       .join('\n')
-  }
-
-  function handleProceedToAgreement() {
-    router.push(`/${code}/agree`)
   }
 
   if (waitingForTeam) {
@@ -221,23 +250,21 @@ export default function RevealPage() {
         </div>
 
         {/* Summary + proceed */}
-        {aiResult && (
+        {aiResult && flagged.length === 0 && (
           <div className="bg-white rounded-2xl shadow-sm border border-stone-100 p-6">
             <h3 className="font-semibold text-stone-800 mb-2">Before you continue</h3>
-            {flagged.length === 0 ? (
-              <p className="text-sm text-stone-600 mb-4">No major gaps detected. When you're ready, move on to write your group agreements.</p>
-            ) : (
-              <p className="text-sm text-stone-600 mb-4">
-                Go through each <span className="text-amber-700 font-medium">⚠ flagged component</span> above and talk it through before moving on. You'll record your decisions in the next step.
-              </p>
-            )}
+            <p className="text-sm text-stone-600 mb-4">No major gaps detected. When you're ready, move on to write your group agreements.</p>
             <button
-              onClick={handleProceedToAgreement}
+              onClick={() => router.push(`/${code}/agree`)}
               className="w-full bg-green-700 text-white rounded-xl py-3 font-medium hover:bg-green-800 transition"
             >
-              Let's start discussing →
+              Continue →
             </button>
           </div>
+        )}
+
+        {aiResult && flagged.length > 0 && (
+          <DiscussionTimerStartModal isLeader={isLeader} onStart={handleStartTimer} />
         )}
       </div>
     </main>
