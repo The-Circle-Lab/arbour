@@ -239,6 +239,23 @@ export default function AgreePage() {
     return 'needs_draft'
   }
 
+  // Walks forward from the current tab, wrapping around, to the next component
+  // that isn't fully approved yet — lets "Next" step through everything left
+  // to agree on rather than requiring manual tab clicks.
+  function nextUnresolvedComponent(from: ChatComponent): ChatComponent | null {
+    const idx = CHAT_COMPONENTS.indexOf(from)
+    for (let i = 1; i <= CHAT_COMPONENTS.length; i++) {
+      const candidate = CHAT_COMPONENTS[(idx + i) % CHAT_COMPONENTS.length]
+      if (getStatus(candidate) !== 'approved') return candidate
+    }
+    return null
+  }
+
+  function handleNext() {
+    const next = nextUnresolvedComponent(activeComponent)
+    if (next) setActiveComponent(next)
+  }
+
   const totalApproved = CHAT_COMPONENTS.filter(c => getStatus(c) === 'approved').length
   const allDone = totalApproved === CHAT_COMPONENTS.length
   const isProjectManager = !!projectManagerId && projectManagerId === membership?.member_id
@@ -509,6 +526,13 @@ export default function AgreePage() {
               View collaboration agreement
             </button>
           </div>
+        ) : status === 'approved' ? (
+          <button
+            onClick={handleNext}
+            className="w-full bg-green-700 text-white rounded-xl py-4 text-lg font-medium hover:bg-green-800 transition"
+          >
+            Next unresolved section →
+          </button>
         ) : (
           <div className="text-center text-sm text-stone-400 py-2">
             {`${CHAT_COMPONENTS.length - totalApproved} component${CHAT_COMPONENTS.length - totalApproved !== 1 ? 's' : ''} still need agreement`}

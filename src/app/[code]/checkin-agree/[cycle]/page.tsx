@@ -170,6 +170,24 @@ export default function CheckinAgreePage() {
     setNote('')
   }
 
+  // Walks forward through the flagged tabs, wrapping around, to the next one
+  // that isn't fully re-approved yet — lets "Next" step through everything
+  // left to re-agree on rather than requiring manual tab clicks.
+  function nextUnresolvedComponent(from: ChatComponent | null): ChatComponent | null {
+    if (flagged.length === 0) return null
+    const idx = from ? flagged.indexOf(from) : -1
+    for (let i = 1; i <= flagged.length; i++) {
+      const candidate = flagged[(idx + i) % flagged.length]
+      if (!fullyApproved(candidate)) return candidate
+    }
+    return null
+  }
+
+  function handleNext() {
+    const next = nextUnresolvedComponent(active)
+    if (next) selectComponent(next)
+  }
+
   function handleContinue() {
     if (cycleNum >= 2) router.push(`/${code}/start`)
     else router.push(`/${code}/checkin-intro`)
@@ -339,6 +357,13 @@ export default function CheckinAgreePage() {
             className="w-full bg-green-700 text-white rounded-xl py-4 text-lg font-medium hover:bg-green-800 transition"
           >
             {cycleNum >= 2 ? 'Finish — back to work →' : 'Done — continue →'}
+          </button>
+        ) : active && fullyApproved(active) ? (
+          <button
+            onClick={handleNext}
+            className="w-full bg-green-700 text-white rounded-xl py-4 text-lg font-medium hover:bg-green-800 transition"
+          >
+            Next unresolved section →
           </button>
         ) : (
           <div className="text-center text-sm text-stone-400 py-2">
