@@ -162,7 +162,7 @@ export function DeadlineMissedModal({
         <p className="text-xs text-amber-700 uppercase tracking-wide font-semibold mb-1">Deadline missed</p>
         <h2 id={headingId} className="text-lg font-bold text-stone-800">{taskTitle}</h2>
         <p className="text-sm text-amber-800 mt-1">
-          Assigned to {assigneeName} · {overdueDurationLabel}
+          {`Assigned to ${assigneeName} · ${overdueDurationLabel}`}
         </p>
       </div>
 

@@ -31,6 +31,7 @@ interface TeamData {
   project_title: string | null
   deadline: string | null
   assignment_brief: string | null
+  project_manager_id: string | null
   members: Member[]
   status: { phase: Phase; teamSize: number; tasksApproved: boolean }
 }
@@ -211,6 +212,7 @@ export default function TasksPage() {
   const teamSize = team.status.teamSize
   const myApproval = membership ? approvals.includes(membership.member_id) : false
   const tasksApproved = team.status.tasksApproved
+  const isProjectManager = !!team.project_manager_id && team.project_manager_id === membership?.member_id
   const incompleteCount = tasks.filter(t => !t.assigned_to || !t.deadline).length
   const allTasksReady = tasks.length > 0 && incompleteCount === 0
 
@@ -278,12 +280,14 @@ export default function TasksPage() {
                     <span className={`shrink-0 text-xs font-semibold px-2.5 py-1 rounded-full border ${STATUS_COLORS[task.status]}`}>
                       {STATUS_LABELS[task.status]}
                     </span>
-                    <button
-                      onClick={() => handleDelete(task.id)}
-                      className="shrink-0 text-xs text-stone-300 hover:text-red-500 transition"
-                    >
-                      Remove
-                    </button>
+                    {isProjectManager && (
+                      <button
+                        onClick={() => handleDelete(task.id)}
+                        className="shrink-0 text-xs text-stone-300 hover:text-red-500 transition"
+                      >
+                        Remove
+                      </button>
+                    )}
                   </div>
 
                   <textarea
@@ -314,10 +318,12 @@ export default function TasksPage() {
 
                     <input
                       type="date"
-                      className={`text-xs border rounded-lg px-2 py-1.5 text-stone-600 focus:outline-none focus:ring-2 focus:ring-green-500 ${
+                      className={`text-xs border rounded-lg px-2 py-1.5 text-stone-600 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-40 ${
                         task.deadline ? 'border-stone-200' : 'border-amber-300 bg-amber-50'
                       }`}
                       value={deadlineDraft.date}
+                      disabled={!isProjectManager}
+                      title={isProjectManager ? undefined : 'Only the project manager can set deadlines'}
                       onChange={e => {
                         // Buffer locally instead of PATCHing on every keystroke — a
                         // controlled native date/time input reset mid-typing (from an
@@ -335,7 +341,8 @@ export default function TasksPage() {
                         task.deadline ? 'border-stone-200' : 'border-amber-300 bg-amber-50'
                       }`}
                       value={deadlineDraft.time}
-                      disabled={!deadlineDraft.date}
+                      disabled={!deadlineDraft.date || !isProjectManager}
+                      title={isProjectManager ? undefined : 'Only the project manager can set deadlines'}
                       onChange={e => {
                         deadlineDirtyRef.current.add(task.id)
                         setDeadlineDrafts(d => ({ ...d, [task.id]: { ...deadlineDraft, time: e.target.value } }))
@@ -344,10 +351,12 @@ export default function TasksPage() {
                     />
 
                     <select
-                      className={`text-xs border rounded-lg px-2 py-1.5 text-stone-600 focus:outline-none focus:ring-2 focus:ring-green-500 ${
+                      className={`text-xs border rounded-lg px-2 py-1.5 text-stone-600 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-40 ${
                         task.assigned_to ? 'border-stone-200' : 'border-amber-300 bg-amber-50'
                       }`}
                       value={task.assigned_to ?? ''}
+                      disabled={!isProjectManager}
+                      title={isProjectManager ? undefined : 'Only the project manager can assign tasks'}
                       onChange={e => handleFieldPatch(task.id, { assignedTo: e.target.value || null })}
                     >
                       <option value="">Unassigned</option>
@@ -397,7 +406,7 @@ export default function TasksPage() {
                 <p className="text-xs text-stone-400 mb-3">Any change to the list clears everyone&apos;s approval — review and approve again.</p>
                 {!allTasksReady ? (
                   <div className="text-center text-amber-700 bg-amber-50 border border-amber-200 rounded-lg text-sm py-2 px-3">
-                    {incompleteCount} task{incompleteCount !== 1 ? 's' : ''} still need{incompleteCount === 1 ? 's' : ''} an assignee and a deadline before the list can be approved
+                    {`${incompleteCount} task${incompleteCount !== 1 ? 's' : ''} still need${incompleteCount === 1 ? 's' : ''} an assignee and a deadline before the list can be approved`}
                   </div>
                 ) : tasksApproved ? (
                   <div className="text-center text-green-700 font-medium text-sm py-2">✓ Everyone has approved this list</div>

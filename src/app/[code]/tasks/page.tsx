@@ -249,7 +249,7 @@ export default function TaskListPage() {
                           className={`border rounded-lg p-3 ${isLatest ? 'bg-purple-50 border-purple-100' : 'bg-stone-50 border-stone-100'}`}
                         >
                           <p className={`text-xs font-medium mb-1 ${isLatest ? 'text-purple-700' : 'text-stone-500'}`}>
-                            {isLatest ? 'Submitted' : 'Earlier submission'} by {s.submitter_display_name ?? 'a former member'} · {new Date(s.submitted_at).toLocaleString()}
+                            {`${isLatest ? 'Submitted' : 'Earlier submission'} by ${s.submitter_display_name ?? 'a former member'} · ${new Date(s.submitted_at).toLocaleString()}`}
                           </p>
                           {s.content && (
                             <p className="text-sm text-stone-700 whitespace-pre-wrap">{s.content}</p>

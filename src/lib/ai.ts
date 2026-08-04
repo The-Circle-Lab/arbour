@@ -346,7 +346,9 @@ ${memberSection}
 Suggest 5 to 10 concrete tasks that would make progress on this project. For each task:
 - Give a short title and a 1-2 sentence description.
 - Suggest one owner by picking their id from the member list above, based on what they said about the role they want — leave assignee_member_id null if no member is a clear fit.
-- Suggest a deadline (YYYY-MM-DD) that falls on or before the team deadline if one was given; otherwise use your judgement based on the project timeline implied above, or leave it null if there's not enough information to guess.`
+- Suggest a deadline (YYYY-MM-DD) that falls on or before the team deadline if one was given; otherwise use your judgement based on the project timeline implied above, or leave it null if there's not enough information to guess.
+
+Make sure that the tasks are fairly distributed across the team based on the work required for each task, and according to the decisions made in the collaboration agreement.`
 
   const schema = buildTaskSuggestionsSchema(members.map(m => m.id))
   const message = await sendAiApiRequest<{

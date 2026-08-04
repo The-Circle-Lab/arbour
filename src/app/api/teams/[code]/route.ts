@@ -10,8 +10,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ code: s
   const membership = await requireTeamMember(code)
   if (!membership) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const team = await queryOne<{ id: string; name: string; join_code: string; project_title: string | null; deadline: string | null; assignment_brief: string | null; plant_type: string | null; plant_votes: Record<string, string> | null }>(
-    'SELECT id, name, join_code, project_title, deadline, assignment_brief, plant_type, plant_votes FROM teams WHERE join_code = $1',
+  const team = await queryOne<{ id: string; name: string; join_code: string; project_title: string | null; deadline: string | null; assignment_brief: string | null; plant_type: string | null; plant_votes: Record<string, string> | null; project_manager_id: string | null; project_manager_votes: Record<string, string> | null }>(
+    'SELECT id, name, join_code, project_title, deadline, assignment_brief, plant_type, plant_votes, project_manager_id, project_manager_votes FROM teams WHERE join_code = $1',
     [code.toUpperCase()]
   )
   if (!team) return NextResponse.json({ error: 'Team not found' }, { status: 404 })

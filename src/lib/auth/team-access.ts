@@ -58,3 +58,13 @@ export async function requireOwnedMember(memberId: string): Promise<OwnedMember 
 
   return { userId, teamId: row.team_id }
 }
+
+// Elected via /choose-project-manager and fixed for the life of the group —
+// see teams.project_manager_id.
+export async function isProjectManager(teamId: string, memberId: string): Promise<boolean> {
+  const row = await queryOne<{ project_manager_id: string | null }>(
+    'SELECT project_manager_id FROM teams WHERE id = $1',
+    [teamId]
+  )
+  return row?.project_manager_id === memberId
+}

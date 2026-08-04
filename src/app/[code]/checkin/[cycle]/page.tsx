@@ -120,7 +120,7 @@ export default function CheckinPage() {
         <div className="mb-6">
           <div className="flex items-center justify-between mb-1">
             <span className="text-xs text-stone-400 font-medium uppercase tracking-wide">
-              Check-in · Cycle {cycleNum} · {currentIdx + 1}/{CHAT_COMPONENTS.length}
+              {`Check-in · Cycle ${cycleNum} · ${currentIdx + 1}/${CHAT_COMPONENTS.length}`}
             </span>
           </div>
           <div className="w-full bg-stone-200 rounded-full h-1.5">

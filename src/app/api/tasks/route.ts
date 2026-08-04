@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { validate as isUuid } from 'uuid'
 import { query, queryOne } from '@/lib/db'
-import { requireTeamMember, requireTeamMemberByTeamId } from '@/lib/auth/team-access'
+import { requireTeamMember, requireTeamMemberByTeamId, isProjectManager } from '@/lib/auth/team-access'
 import { toDeadlineUtc, formatDeadlineLocal } from '@/lib/dates'
 import { clearTaskApprovals, listTaskApprovers } from '@/lib/task-approvals'
 import type { TaskSubmission } from '@/lib/task-status'
@@ -255,6 +255,11 @@ export async function POST(req: Request) {
 
   const membership = await requireTeamMemberByTeamId(teamId)
   if (!membership) return NextResponse.json({ error: 'Not authorized for this team' }, { status: 403 })
+
+  if (assignedTo || deadline) {
+    const pm = await isProjectManager(teamId, membership.memberId)
+    if (!pm) return NextResponse.json({ error: 'Only the project manager can assign tasks or set deadlines' }, { status: 403 })
+  }
 
   if (assignedTo) {
     if (!isUuid(assignedTo)) {

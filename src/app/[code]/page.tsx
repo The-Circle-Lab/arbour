@@ -11,7 +11,7 @@ interface TeamData {
   name: string
   join_code: string
   members: { id: string; display_name: string }[]
-  status: { phase: Phase; teamSize: number; reflectionsSubmitted: number }
+  status: { phase: Phase; hasProjectManager: boolean; teamSize: number; reflectionsSubmitted: number }
   plant_type?: string | null
   plant_votes?: Record<string, string> | null
 }
@@ -46,7 +46,8 @@ export default function TeamHub() {
 
         const phase = data.status.phase
         const plantChosen = data.plant_type && data.plant_votes && Object.keys(data.plant_votes).length > 0
-        if (phase === 'REFLECTING' && !plantChosen) router.push(`/${code}/choose-plant`)
+        if (phase === 'REFLECTING' && !data.status.hasProjectManager) router.push(`/${code}/choose-project-manager`)
+        else if (phase === 'REFLECTING' && !plantChosen) router.push(`/${code}/choose-plant`)
         else if (phase === 'REFLECTING') router.push(`/${code}/reflect`)
         else if (phase === 'REVEAL') router.push(`/${code}/reveal`)
         else if (phase === 'AGREEING') router.push(`/${code}/agree`)

@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { useSession, getMembership } from '@/lib/session'
 import { COMPONENT_LABELS, COMPONENT_DESCRIPTIONS, ChatComponent } from '@/lib/chat-components'
 import { WaitingRoom } from '@/components/WaitingRoom'
+import { DiscussionTimer, DiscussionTimerState } from '@/components/DiscussionTimer'
 
 interface Agreement {
   component: string
@@ -26,6 +27,7 @@ export default function CheckinAgreePage() {
 
   const [teamId, setTeamId] = useState('')
   const [teamSize, setTeamSize] = useState(2)
+  const [projectManagerId, setProjectManagerId] = useState<string | null>(null)
   const [members, setMembers] = useState<{ id: string; display_name: string }[]>([])
   const [flagged, setFlagged] = useState<ChatComponent[]>([])
   const [comments, setComments] = useState<Record<string, string>>({})
@@ -35,6 +37,8 @@ export default function CheckinAgreePage() {
   const [note, setNote] = useState('')
   const [revising, setRevising] = useState(false)
   const [ready, setReady] = useState(false)
+  const [timer, setTimer] = useState<DiscussionTimerState | null>(null)
+  const [timerLoaded, setTimerLoaded] = useState(false)
 
   const activeRef = useRef<ChatComponent | null>(null)
 
@@ -45,6 +49,7 @@ export default function CheckinAgreePage() {
     setTeamId(teamData.id)
     setTeamSize(teamData.status.teamSize)
     setMembers(teamData.members)
+    setProjectManagerId(teamData.project_manager_id ?? null)
 
     const plantRes = await fetch(`/api/plant/${code.toUpperCase()}/${cycleNum}`)
     if (!plantRes.ok) return
@@ -64,8 +69,41 @@ export default function CheckinAgreePage() {
       for (const ag of agData.agreements) map[ag.component] = ag
       setAgreements(map)
       setApprovals(agData.approvals)
+
+      // Same poll as the rest of this page's state, so the timer and
+      // allResolved (computed below from flagged/approvals) always reflect
+      // one consistent snapshot instead of two independently-timed polls.
+      const resolved = flaggedList.length > 0 && flaggedList.every((comp: ChatComponent) =>
+        agData.approvals.filter((a: Approval) => a.component === comp).length >= teamData.status.teamSize
+      )
+      // A cycle with nothing flagged never reaches the DiscussionTimer render
+      // path at all (see the early return below) — don't poll for it either.
+      if (flaggedList.length > 0 && !resolved) {
+        const params = new URLSearchParams({ step: 'CHECKIN_AGREE', cycle: String(cycleNum) })
+        const timerRes = await fetch(`/api/teams/${code.toUpperCase()}/discussion-timer?${params.toString()}`)
+        if (timerRes.ok) setTimer(await timerRes.json())
+      }
+      setTimerLoaded(true)
     }
     setReady(true)
+  }
+
+  async function handleStartTimer() {
+    await fetch(`/api/teams/${code.toUpperCase()}/discussion-timer/start`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ step: 'CHECKIN_AGREE', cycleNumber: cycleNum }),
+    })
+    await loadAll()
+  }
+
+  async function handleExtendTimer() {
+    await fetch(`/api/teams/${code.toUpperCase()}/discussion-timer/extend`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ step: 'CHECKIN_AGREE', cycleNumber: cycleNum }),
+    })
+    await loadAll()
   }
 
   useEffect(() => {
@@ -91,6 +129,8 @@ export default function CheckinAgreePage() {
     return approvalsFor(comp).length >= teamSize
   }
   const allResolved = flagged.length > 0 && flagged.every(c => fullyApproved(c))
+  const isProjectManager = !!projectManagerId && projectManagerId === membership?.member_id
+  const projectManagerName = members.find(m => m.id === projectManagerId)?.display_name ?? 'your project manager'
 
   async function handleRevise() {
     if (!teamId || !active || !note.trim()) return
@@ -130,6 +170,24 @@ export default function CheckinAgreePage() {
     setNote('')
   }
 
+  // Walks forward through the flagged tabs, wrapping around, to the next one
+  // that isn't fully re-approved yet — lets "Next" step through everything
+  // left to re-agree on rather than requiring manual tab clicks.
+  function nextUnresolvedComponent(from: ChatComponent | null): ChatComponent | null {
+    if (flagged.length === 0) return null
+    const idx = from ? flagged.indexOf(from) : -1
+    for (let i = 1; i <= flagged.length; i++) {
+      const candidate = flagged[(idx + i) % flagged.length]
+      if (!fullyApproved(candidate)) return candidate
+    }
+    return null
+  }
+
+  function handleNext() {
+    const next = nextUnresolvedComponent(active)
+    if (next) selectComponent(next)
+  }
+
   function handleContinue() {
     if (cycleNum >= 2) router.push(`/${code}/start`)
     else router.push(`/${code}/checkin-intro`)
@@ -160,12 +218,21 @@ export default function CheckinAgreePage() {
   const myApproval = active ? approvalsFor(active).some(a => a.member_id === membership?.member_id) : false
 
   return (
-    <main className="min-h-screen bg-stone-50 p-4 md:p-8">
-      <div className="max-w-3xl mx-auto">
+    <main className="min-h-screen bg-stone-50">
+      {!allResolved && (
+        <DiscussionTimer
+          loading={!timerLoaded}
+          timer={timer}
+          isProjectManager={isProjectManager}
+          onStart={handleStartTimer}
+          onExtend={handleExtendTimer}
+        />
+      )}
+      <div className="max-w-3xl mx-auto p-4 md:p-8">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-stone-800">Re-align after check-in</h1>
           <p className="text-stone-500 text-sm mt-1">
-            Cycle {cycleNum} · {flagged.filter(c => fullyApproved(c)).length} of {flagged.length} re-agreed · talk each one through, then approve the updated agreement.
+            {`Cycle ${cycleNum} · ${flagged.filter(c => fullyApproved(c)).length} of ${flagged.length} re-agreed · talk each one through, then approve the updated agreement.`}
           </p>
         </div>
 
@@ -211,28 +278,34 @@ export default function CheckinAgreePage() {
               </p>
             </div>
 
-            {/* Revise the agreement, or approve as-is if it still holds */}
+            {/* Revise the agreement, or approve as-is if it still holds — project manager only */}
             {!fullyApproved(active) && (
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-stone-700 mb-1">
-                  What did you decide?
-                  <span className="text-stone-400 font-normal ml-1">: update the agreement, or approve as-is if it still holds</span>
-                </label>
-                <textarea
-                  className="w-full border border-amber-200 rounded-lg px-3 py-2 text-sm text-stone-800 resize-none focus:outline-none focus:ring-2 focus:ring-amber-400"
-                  rows={2}
-                  value={note}
-                  onChange={e => setNote(e.target.value)}
-                  placeholder="e.g. We're behind on the data work, so Alan takes testing and Annie picks up the remaining analysis."
-                />
-                <button
-                  onClick={handleRevise}
-                  disabled={revising || !note.trim()}
-                  className="mt-2 w-full border border-green-600 text-green-700 rounded-lg py-2 text-sm font-medium hover:bg-green-50 disabled:opacity-40 transition"
-                >
-                  {revising ? 'Updating agreement…' : 'Update agreement with this'}
-                </button>
-              </div>
+              isProjectManager ? (
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-stone-700 mb-1">
+                    What did the team decide?
+                    <span className="text-stone-400 font-normal ml-1">: update the agreement, or approve as-is if it still holds</span>
+                  </label>
+                  <textarea
+                    className="w-full border border-amber-200 rounded-lg px-3 py-2 text-sm text-stone-800 resize-none focus:outline-none focus:ring-2 focus:ring-amber-400"
+                    rows={2}
+                    value={note}
+                    onChange={e => setNote(e.target.value)}
+                    placeholder="e.g. We're behind on the data work, so Alan takes testing and Annie picks up the remaining analysis."
+                  />
+                  <button
+                    onClick={handleRevise}
+                    disabled={revising || !note.trim()}
+                    className="mt-2 w-full border border-green-600 text-green-700 rounded-lg py-2 text-sm font-medium hover:bg-green-50 disabled:opacity-40 transition"
+                  >
+                    {revising ? 'Updating agreement…' : 'Update agreement with this'}
+                  </button>
+                </div>
+              ) : (
+                <p className="text-xs text-stone-400 mb-4">
+                  {`${projectManagerName} records what the team decides and updates the wording. Read it over and approve when it looks right.`}
+                </p>
+              )
             )}
 
             {/* Approval */}
@@ -285,9 +358,16 @@ export default function CheckinAgreePage() {
           >
             {cycleNum >= 2 ? 'Finish — back to work →' : 'Done — continue →'}
           </button>
+        ) : active && fullyApproved(active) ? (
+          <button
+            onClick={handleNext}
+            className="w-full bg-green-700 text-white rounded-xl py-4 text-lg font-medium hover:bg-green-800 transition"
+          >
+            Next unresolved section →
+          </button>
         ) : (
           <div className="text-center text-sm text-stone-400 py-2">
-            {flagged.filter(c => !fullyApproved(c)).length} still need to be re-agreed
+            {`${flagged.filter(c => !fullyApproved(c)).length} still need to be re-agreed`}
           </div>
         )}
       </div>

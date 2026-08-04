@@ -213,7 +213,7 @@ export default function FinalReportPage() {
             )}
           </div>
           <p className="text-stone-500 text-sm mt-1">
-            {data.team.projectTitle ?? 'Your project'} — how the team collaborated and delivered.
+            {`${data.team.projectTitle ?? 'Your project'} — how the team collaborated and delivered.`}
           </p>
         </div>
 
@@ -319,7 +319,7 @@ export default function FinalReportPage() {
         <div className="bg-white rounded-2xl shadow-sm border border-stone-100 p-6 mb-8">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-bold text-stone-800">Task & delivery history</h2>
-            <span className="text-xs text-stone-400">{data.taskStats.done ?? 0} of {data.taskWorkflow.length} done</span>
+            <span className="text-xs text-stone-400">{`${data.taskStats.done ?? 0} of ${data.taskWorkflow.length} done`}</span>
           </div>
           {data.taskWorkflow.length === 0 ? (
             <p className="text-sm text-stone-400 italic">No tasks were created.</p>
@@ -340,7 +340,7 @@ export default function FinalReportPage() {
                   {task.submissions.map(sub => (
                     <div key={sub.id} className="bg-stone-50 rounded-lg p-3 mt-2">
                       <p className="text-xs text-stone-400 mb-1">
-                        Submitted by {sub.submitterDisplayName ?? 'a former member'} · {formatDate(sub.submittedAt)}
+                        {`Submitted by ${sub.submitterDisplayName ?? 'a former member'} · ${formatDate(sub.submittedAt)}`}
                       </p>
                       <p className="text-sm text-stone-700">{sub.summary ?? sub.content}</p>
                       {sub.votes.length > 0 && (
@@ -380,7 +380,7 @@ export default function FinalReportPage() {
                       )}
                       {ev.proposals.filter(p => p.responses.length > 0).map(p => (
                         <p key={p.id} className="text-xs text-stone-500 mt-1">
-                          Round {p.round}: {p.proposedByName} proposed &quot;{p.label}&quot; — {p.responses.map(r => `${r.displayName} ${r.response}d`).join(', ')}
+                          {`Round ${p.round}: ${p.proposedByName} proposed "${p.label}" — ${p.responses.map(r => `${r.displayName} ${r.response}d`).join(', ')}`}
                         </p>
                       ))}
                     </div>
