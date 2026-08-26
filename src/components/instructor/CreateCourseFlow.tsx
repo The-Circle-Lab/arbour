@@ -45,6 +45,7 @@ export function useCreateCourse({ onCreated }: UseCreateCourseOptions = {}) {
   }
 
   function reset() {
+    setName('')
     setCreatedCode(null)
     setError('')
   }

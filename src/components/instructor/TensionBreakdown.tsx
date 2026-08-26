@@ -15,9 +15,12 @@ const SCORE_CAP = 2.0
 
 type Band = 'ok' | 'watch' | 'high'
 
-function bandFor(score: number): Band {
+// `flagged` can be true from a single very_off rating even when the
+// averaged score is low (see computePlantState) — take it into account so
+// the band pill never shows "Aligned" next to a "flagged" badge.
+function bandFor(score: number, flagged: boolean): Band {
   if (score >= 1.0) return 'high'
-  if (score >= 0.5) return 'watch'
+  if (score >= 0.5 || flagged) return 'watch'
   return 'ok'
 }
 
@@ -44,9 +47,9 @@ export function TensionBreakdown({ componentScores, flaggedComponents, perCompon
     <div className="flex flex-col gap-4">
       {CHAT_COMPONENTS.map(component => {
         const score = componentScores[component] ?? 0
-        const band = bandFor(score)
-        const widthPct = Math.min(100, (Math.max(0, score) / SCORE_CAP) * 100)
         const flagged = flaggedComponents.includes(component)
+        const band = bandFor(score, flagged)
+        const widthPct = Math.min(100, (Math.max(0, score) / SCORE_CAP) * 100)
 
         return (
           <div key={component} className="border border-stone-100 rounded-xl p-4">

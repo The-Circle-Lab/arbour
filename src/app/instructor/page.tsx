@@ -16,7 +16,6 @@ interface CourseTeam {
   plantType: string | null
   stage: number
   state: PlantState
-  latestCycle: number | null
 }
 
 const STATE_PILL_STYLES: Record<PlantState, string> = {

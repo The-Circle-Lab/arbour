@@ -27,14 +27,17 @@ interface InstructorCourseContextValue {
 const InstructorCourseContext = createContext<InstructorCourseContextValue | null>(null)
 
 export function InstructorCourseProvider({ children }: { children: ReactNode }) {
-  const { user } = useSession()
+  const { user, loading: sessionLoading } = useSession()
   const isInstructor = user?.role === 'instructor'
   const [courses, setCourses] = useState<InstructorCourse[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null)
 
   const refreshCourses = useCallback(async () => {
-    if (!isInstructor) { setLoading(false); return }
+    // Session hasn't resolved yet — isInstructor is unknown, not confirmed
+    // false, so don't drop `loading` to false with a stale/empty list.
+    if (sessionLoading) return
+    if (!isInstructor) { setCourses([]); setLoading(false); return }
     // A real fetch is about to start: make sure `loading` reflects that even
     // if a previous (not-an-instructor) pass already set it to false, so
     // consumers never see loading=false with a stale, pre-fetch courses list.
@@ -53,7 +56,7 @@ export function InstructorCourseProvider({ children }: { children: ReactNode }) 
     } finally {
       setLoading(false)
     }
-  }, [isInstructor])
+  }, [isInstructor, sessionLoading])
 
   useEffect(() => {
     refreshCourses()

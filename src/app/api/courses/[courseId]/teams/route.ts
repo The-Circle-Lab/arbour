@@ -21,8 +21,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ courseI
       latest_cycle: number | null
     }>(
       `SELECT t.id, t.name, t.join_code, t.project_title, t.deadline, t.plant_type, t.stage,
-        (SELECT level FROM plant_health_events WHERE team_id = t.id ORDER BY occurred_at DESC, id DESC LIMIT 1) AS level,
-        (SELECT MAX(cycle_number) FROM plant_states WHERE team_id = t.id) AS latest_cycle
+        (SELECT level FROM plant_health_events WHERE team_id = t.id ORDER BY occurred_at DESC, id DESC LIMIT 1) AS level
        FROM teams t
        WHERE t.course_id = $1
        ORDER BY t.name`,

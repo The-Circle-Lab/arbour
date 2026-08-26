@@ -10,10 +10,9 @@ export function generateJoinCode(): string {
 }
 
 export async function generateUniqueJoinCode(exists: (code: string) => Promise<boolean>): Promise<string> {
-  let code = generateJoinCode()
   for (let attempts = 0; attempts < MAX_ATTEMPTS; attempts++) {
+    const code = generateJoinCode()
     if (!(await exists(code))) return code
-    code = generateJoinCode()
   }
-  return code
+  throw new Error('Could not generate a unique join code, please try again.')
 }

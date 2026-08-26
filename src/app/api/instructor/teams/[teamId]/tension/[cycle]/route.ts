@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server'
-import { query, queryOne } from '@/lib/db'
-import { computePlantState, CheckinRow } from '@/lib/plant-logic'
+import { queryOne } from '@/lib/db'
+import { getPlantReadiness } from '@/lib/plant-readiness'
 import { ChatComponent } from '@/lib/chat-components'
 import { requireInstructorTeam } from '@/lib/auth/instructor'
 import { isValidCycle } from '@/lib/cycle'
 
 // Team-scoped, no join-code membership check — instructor auth already
-// scopes access, same shape of query as src/app/api/plant/[code]/[cycle]/route.ts
+// scopes access, same readiness/compute rule as
+// src/app/api/plant/[code]/[cycle]/route.ts (shared via getPlantReadiness)
 // but recomputed on demand rather than persisted, since nothing today
 // persists componentScores.
 export async function GET(_req: Request, { params }: { params: Promise<{ teamId: string; cycle: string }> }) {
@@ -18,31 +19,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ teamId:
     if (!isValidCycle(cycle)) return NextResponse.json({ error: 'Invalid cycle' }, { status: 400 })
     const cycleNum = Number(cycle)
 
-    const [{ team_size }] = await query<{ team_size: number }>(
-      'SELECT COUNT(*)::int AS team_size FROM members WHERE team_id = $1',
-      [teamId]
-    )
-
-    const submittedRows = await query<{ member_id: string; count: number }>(
-      `SELECT ci.member_id, COUNT(DISTINCT ci.component)::int AS count
-       FROM checkins ci
-       JOIN members m ON m.id = ci.member_id
-       WHERE m.team_id = $1 AND ci.cycle_number = $2
-       GROUP BY ci.member_id`,
-      [teamId, cycleNum]
-    )
-    const allSubmitted = submittedRows.filter(r => r.count >= 6).length >= team_size
-    if (!allSubmitted) return NextResponse.json({ ready: false }, { status: 202 })
-
-    const checkinRows = await query<CheckinRow>(
-      `SELECT ci.component, ci.response_data
-       FROM checkins ci
-       JOIN members m ON m.id = ci.member_id
-       WHERE m.team_id = $1 AND ci.cycle_number = $2`,
-      [teamId, cycleNum]
-    )
-
-    const plantResult = computePlantState(checkinRows, team_size)
+    const readiness = await getPlantReadiness(teamId, cycleNum)
+    if (!readiness.ready) return NextResponse.json({ ready: false }, { status: 202 })
 
     const cached = await queryOne<{ per_component: Record<ChatComponent, string> | null }>(
       'SELECT per_component FROM plant_states WHERE team_id = $1 AND cycle_number = $2',
@@ -50,9 +28,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ teamId:
     )
 
     return NextResponse.json({
-      state: plantResult.state,
-      flaggedComponents: plantResult.flaggedComponents,
-      componentScores: plantResult.componentScores,
+      state: readiness.plantResult.state,
+      flaggedComponents: readiness.plantResult.flaggedComponents,
+      componentScores: readiness.plantResult.componentScores,
       perComponentNotes: cached?.per_component ?? null,
     })
   } catch (e) {

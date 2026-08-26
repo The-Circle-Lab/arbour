@@ -65,6 +65,7 @@ export default function InstructorTeamDetailPage() {
   const [tensionError, setTensionError] = useState('')
   const [summary, setSummary] = useState<SummaryRow | null>(null)
   const [generatingSummary, setGeneratingSummary] = useState(false)
+  const [summaryError, setSummaryError] = useState('')
   const [notFound, setNotFound] = useState(false)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
@@ -107,7 +108,13 @@ export default function InstructorTeamDetailPage() {
     setTension(null)
     setSummary(null)
     setTensionError('')
-    const res = await fetch(`/api/instructor/teams/${teamId}/tension/${cycle}`)
+    setSummaryError('')
+    // Fired together — the summary fetch doesn't depend on the tension
+    // response, so there's no reason to pay their latencies back-to-back.
+    const [res, summaryRes] = await Promise.all([
+      fetch(`/api/instructor/teams/${teamId}/tension/${cycle}`),
+      fetch(`/api/instructor/teams/${teamId}/summary/${cycle}`),
+    ])
     if (latestCycleRef.current !== cycle) return
     if (res.status === 202) { setTensionReady(false); return }
     if (!res.ok) { setTensionError('Could not load the tension breakdown for this cycle.'); return }
@@ -116,8 +123,6 @@ export default function InstructorTeamDetailPage() {
     if (latestCycleRef.current !== cycle) return
     setTension(data)
 
-    const summaryRes = await fetch(`/api/instructor/teams/${teamId}/summary/${cycle}`)
-    if (latestCycleRef.current !== cycle) return
     if (summaryRes.ok) {
       const summaryData: { cached: SummaryRow | null } = await summaryRes.json()
       if (latestCycleRef.current !== cycle) return
@@ -132,13 +137,16 @@ export default function InstructorTeamDetailPage() {
 
   async function handleGenerateSummary() {
     if (selectedCycle === null) return
+    const cycle = selectedCycle
     setGeneratingSummary(true)
+    setSummaryError('')
     try {
-      const res = await fetch(`/api/instructor/teams/${teamId}/summary/${selectedCycle}`, { method: 'POST' })
-      if (res.ok) {
-        const data: SummaryRow = await res.json()
-        setSummary(data)
-      }
+      const res = await fetch(`/api/instructor/teams/${teamId}/summary/${cycle}`, { method: 'POST' })
+      if (latestCycleRef.current !== cycle) return
+      if (!res.ok) { setSummaryError('Could not generate a summary for this cycle.'); return }
+      const data: SummaryRow = await res.json()
+      if (latestCycleRef.current !== cycle) return
+      setSummary(data)
     } finally {
       setGeneratingSummary(false)
     }
@@ -302,6 +310,8 @@ export default function InstructorTeamDetailPage() {
                   </div>
                 )}
               </>
+            ) : summaryError ? (
+              <p className="text-sm text-red-600">{summaryError}</p>
             ) : (
               <p className="text-sm text-stone-400 italic">
                 {generatingSummary ? 'Writing a summary of this cycle…' : 'No summary generated yet for this cycle.'}

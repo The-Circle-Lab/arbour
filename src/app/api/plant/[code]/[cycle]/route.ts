@@ -2,7 +2,8 @@ export const maxDuration = 60
 
 import { NextResponse } from 'next/server'
 import { query, queryOne, withTransaction } from '@/lib/db'
-import { computePlantState, flagCountToLevelDrop, CheckinRow } from '@/lib/plant-logic'
+import { flagCountToLevelDrop } from '@/lib/plant-logic'
+import { getPlantReadiness } from '@/lib/plant-readiness'
 import { generateCheckinComparison, CheckinSummary } from '@/lib/ai'
 import { ChatComponent } from '@/lib/chat-components'
 import { requireTeamMember } from '@/lib/auth/team-access'
@@ -29,39 +30,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ code: s
   )
   if (cached) return NextResponse.json(cached)
 
-  // Check all members submitted
-  const [{ team_size }] = await query<{ team_size: number }>(
-    'SELECT COUNT(*)::int AS team_size FROM members WHERE team_id = $1',
-    [teamId]
-  )
-
-  const submittedRows = await query<{ member_id: string; count: number }>(
-    `SELECT ci.member_id, COUNT(DISTINCT ci.component)::int AS count
-     FROM checkins ci
-     JOIN members m ON m.id = ci.member_id
-     WHERE m.team_id = $1 AND ci.cycle_number = $2
-     GROUP BY ci.member_id`,
-    [teamId, cycleNum]
-  )
-  const allSubmitted = submittedRows.filter(r => r.count >= 6).length >= team_size
-  if (!allSubmitted) return NextResponse.json({ ready: false }, { status: 202 })
-
-  // Fetch all check-ins
-  const checkinRows = await query<{
-    member_id: string
-    display_name: string
-    component: string
-    response_data: { rating?: string; ratings?: Record<string, string>; [key: string]: unknown }
-  }>(
-    `SELECT ci.member_id, u.display_name, ci.component, ci.response_data
-     FROM checkins ci
-     JOIN members m ON m.id = ci.member_id
-     JOIN users u ON u.id = m.user_id
-     WHERE m.team_id = $1 AND ci.cycle_number = $2`,
-    [teamId, cycleNum]
-  )
-
-  const plantResult = computePlantState(checkinRows as CheckinRow[], team_size)
+  const readiness = await getPlantReadiness(teamId, cycleNum)
+  if (!readiness.ready) return NextResponse.json({ ready: false }, { status: 202 })
+  const { checkinRows, plantResult } = readiness
 
   // Fetch agreements for nudge context
   const agreementRows = await query<{ component: string; final_text: string }>(
@@ -78,9 +49,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ code: s
       memberMap.set(row.member_id, { displayName: row.display_name, checkins: {} as CheckinSummary['checkins'] })
     }
     const data = row.response_data
-    memberMap.get(row.member_id)!.checkins[row.component as ChatComponent] = {
-      rating: (data.rating as string) ?? undefined,
-      notes: data.ratings as Record<string, string> | undefined,
+    memberMap.get(row.member_id)!.checkins[row.component] = {
+      rating: data.rating,
+      notes: data.ratings,
     }
   }
 
