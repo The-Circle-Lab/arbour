@@ -18,7 +18,6 @@ export async function GET(_req: Request, { params }: { params: Promise<{ courseI
       plant_type: string | null
       stage: number
       level: number | null
-      latest_cycle: number | null
     }>(
       `SELECT t.id, t.name, t.join_code, t.project_title, t.deadline, t.plant_type, t.stage,
         (SELECT level FROM plant_health_events WHERE team_id = t.id ORDER BY occurred_at DESC, id DESC LIMIT 1) AS level
@@ -37,7 +36,6 @@ export async function GET(_req: Request, { params }: { params: Promise<{ courseI
       plantType: row.plant_type,
       stage: row.stage,
       state: levelToState(row.level ?? 3),
-      latestCycle: row.latest_cycle,
     }))
 
     return NextResponse.json({ teams })
