@@ -7,6 +7,7 @@ export interface SessionUser {
   email: string
   display_name: string
   pronouns: string | null
+  role: 'student' | 'instructor'
 }
 
 export interface Membership {

@@ -487,6 +487,53 @@ For each suggestion:
   }))
 }
 
+const instructorSummarySchema = {
+  type: 'object',
+  properties: {
+    summary: { type: 'string' },
+    watch_points: { type: 'array', items: { type: 'string' } },
+  },
+  required: ['summary', 'watch_points'],
+  additionalProperties: false,
+}
+
+export interface InstructorSummaryResult {
+  summary: string
+  watchPoints: string[]
+}
+
+// Synthesizes the already-generated per-component prose (from
+// generateCheckinComparison) into a short instructor-facing read, rather
+// than re-deriving anything from raw check-in data itself.
+export async function generateInstructorCheckinSummary(
+  teamContext: { projectTitle: string | null },
+  cycleNumber: number,
+  flaggedComponents: ChatComponent[],
+  perComponent: Record<ChatComponent, string>,
+): Promise<InstructorSummaryResult> {
+  const projectSection = teamContext.projectTitle ? `Project: ${teamContext.projectTitle}\n` : ''
+
+  const componentSection = CHAT_COMPONENTS
+    .map(c => `${COMPONENT_LABELS[c]}${flaggedComponents.includes(c) ? ' (flagged)' : ''}: ${perComponent[c] ?? 'No note available.'}`)
+    .join('\n')
+
+  const prompt = `You are writing a short instructor-facing read of a student team's check-in (cycle ${cycleNumber}), using CHAT (Cultural-Historical Activity Theory).
+${projectSection}
+Per-component analysis already generated for this team:
+${componentSection}
+
+Write a short plain-language paragraph (3-4 sentences) summarizing how this team is doing overall, for an instructor scanning many teams quickly. Then list up to 3 short "watch point" bullets naming the most important things this instructor should keep an eye on — based only on what's flagged above. If nothing is flagged, return an empty watch_points list and say so plainly in the summary.
+
+${NO_MEMBER_ATTRIBUTION_RULE}`
+
+  const message = await sendAiApiRequest<{ summary: string; watch_points: string[] }>('fast_model', 500, prompt, instructorSummarySchema)
+
+  return {
+    summary: message.summary,
+    watchPoints: message.watch_points,
+  }
+}
+
 const finalReportSchema = {
   type: 'object',
   properties: {

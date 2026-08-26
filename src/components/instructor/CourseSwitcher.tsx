@@ -1,0 +1,198 @@
+'use client'
+
+import { useEffect, useRef, useState } from 'react'
+import { useSession } from '@/lib/session'
+import { useInstructorCourses } from '@/lib/instructor-context'
+import { Modal } from '@/components/Modal'
+
+// The course switcher lives inline in the global navbar (UserBar), between
+// the "Logged in as" text and "Log out" — a small anchored dropdown rather
+// than the earlier floating-button + full-screen-drawer pattern.
+export function CourseSwitcher() {
+  const { user } = useSession()
+  const { courses, selectedCourseId, setSelectedCourseId, refreshCourses } = useInstructorCourses()
+  const [open, setOpen] = useState(false)
+  const [modalOpen, setModalOpen] = useState(false)
+  const [newCourseName, setNewCourseName] = useState('')
+  const [creating, setCreating] = useState(false)
+  const [createdCode, setCreatedCode] = useState<string | null>(null)
+  const [error, setError] = useState('')
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  const containerRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    if (!open) return
+
+    function handlePointerDown(event: MouseEvent) {
+      if (containerRef.current && event.target instanceof Node && !containerRef.current.contains(event.target)) {
+        setOpen(false)
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') setOpen(false)
+    }
+
+    document.addEventListener('mousedown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [open])
+
+  if (user?.role !== 'instructor') return null
+
+  const selectedCourse = courses.find(c => c.id === selectedCourseId) ?? null
+
+  async function handleCreateCourse() {
+    if (!newCourseName.trim()) return
+    setCreating(true)
+    setError('')
+    try {
+      const res = await fetch('/api/courses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newCourseName.trim() }),
+      })
+      const course = await res.json()
+      if (!res.ok) throw new Error(course.error ?? 'Something went wrong.')
+      setCreatedCode(course.join_code)
+      setNewCourseName('')
+      await refreshCourses()
+      setSelectedCourseId(course.id)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Something went wrong.')
+    } finally {
+      setCreating(false)
+    }
+  }
+
+  function closeModal() {
+    setModalOpen(false)
+    setCreatedCode(null)
+    setError('')
+  }
+
+  async function confirmDeleteCourse() {
+    if (!deleteTarget) return
+    setDeleting(true)
+    try {
+      const res = await fetch(`/api/courses/${deleteTarget.id}`, { method: 'DELETE' })
+      if (res.ok) await refreshCourses()
+    } finally {
+      setDeleting(false)
+      setDeleteTarget(null)
+    }
+  }
+
+  return (
+    <>
+      <div className="relative" ref={containerRef}>
+        <button
+          onClick={() => setOpen(o => !o)}
+          className="flex items-center gap-1.5 bg-white border border-stone-200 shadow-sm rounded-full px-3 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-50 transition"
+        >
+          <span>{selectedCourse?.name ?? 'Courses'}</span>
+          <span aria-hidden className={`text-[10px] transition-transform ${open ? 'rotate-180' : ''}`}>▾</span>
+        </button>
+
+        {open && (
+          <div className="absolute right-0 mt-2 w-64 max-w-[80vw] bg-white rounded-xl shadow-sm border border-stone-200 p-2 flex flex-col gap-2 z-40">
+            <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide px-1 pt-1">Your courses</p>
+            <div className="flex flex-col gap-1 max-h-64 overflow-y-auto">
+              {courses.map(c => (
+                <div
+                  key={c.id}
+                  className={`flex items-center gap-1 rounded-lg border transition ${
+                    c.id === selectedCourseId ? 'border-green-600 bg-green-50 text-green-800' : 'border-stone-200 hover:bg-stone-50 text-stone-700'
+                  }`}
+                >
+                  <button
+                    onClick={() => { setSelectedCourseId(c.id); setOpen(false) }}
+                    className="flex-1 text-left px-3 py-2 min-w-0"
+                  >
+                    <p className="text-sm font-medium">{c.name}</p>
+                    <p className="text-xs text-stone-400 mt-0.5">{c.team_count} team{c.team_count === 1 ? '' : 's'} · code {c.join_code}</p>
+                  </button>
+                  <button
+                    onClick={() => { setDeleteTarget({ id: c.id, name: c.name }); setOpen(false) }}
+                    aria-label={`Delete ${c.name}`}
+                    className="px-2 text-stone-300 hover:text-red-600 transition"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+              {courses.length === 0 && <p className="text-sm text-stone-400 italic px-1">No courses yet.</p>}
+            </div>
+            <button
+              onClick={() => { setModalOpen(true); setOpen(false) }}
+              className="w-full border-2 border-green-700 text-green-700 rounded-lg py-2 text-sm font-medium hover:bg-green-50 transition"
+            >
+              + New course
+            </button>
+          </div>
+        )}
+      </div>
+
+      <Modal open={modalOpen} labelledBy="new-course-title" onClose={closeModal}>
+        <div className="p-6">
+          <h2 id="new-course-title" className="text-lg font-bold text-stone-800 mb-4">New course</h2>
+          {createdCode ? (
+            <div>
+              <p className="text-sm text-stone-600 mb-3">This is your course code — please share it with your students so they can join your class.</p>
+              <p className="text-2xl font-mono font-bold tracking-widest text-center text-green-700 bg-stone-50 rounded-xl py-4 mb-4">{createdCode}</p>
+              <button onClick={closeModal} className="w-full bg-green-700 text-white rounded-xl py-3 font-medium hover:bg-green-800 transition">
+                Done
+              </button>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3">
+              <input
+                className="border border-stone-300 rounded-lg px-4 py-3 text-stone-800 focus:outline-none focus:ring-2 focus:ring-green-600"
+                placeholder="Course name (e.g. CS446)"
+                value={newCourseName}
+                onChange={e => setNewCourseName(e.target.value)}
+                autoFocus
+              />
+              {error && <p className="text-red-500 text-sm">{error}</p>}
+              <button
+                onClick={handleCreateCourse}
+                disabled={creating}
+                className="w-full bg-green-700 text-white rounded-xl py-3 font-medium hover:bg-green-800 disabled:opacity-50 transition"
+              >
+                {creating ? 'Creating…' : 'Create course'}
+              </button>
+            </div>
+          )}
+        </div>
+      </Modal>
+
+      <Modal open={!!deleteTarget} labelledBy="delete-course-title" onClose={() => setDeleteTarget(null)}>
+        <div className="p-6">
+          <h2 id="delete-course-title" className="text-lg font-bold text-stone-800 mb-4">Delete course</h2>
+          <p className="text-sm text-stone-600 mb-6">
+            Delete &quot;{deleteTarget?.name}&quot;? Students won&apos;t be able to join it anymore. Nothing already recorded for its teams is affected.
+          </p>
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={() => setDeleteTarget(null)}
+              className="px-3 py-1.5 border border-stone-200 text-stone-600 text-sm rounded-lg hover:bg-stone-50 transition"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={confirmDeleteCourse}
+              disabled={deleting}
+              className="px-3 py-1.5 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 disabled:opacity-50 transition"
+            >
+              {deleting ? 'Deleting…' : 'Delete'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+    </>
+  )
+}
