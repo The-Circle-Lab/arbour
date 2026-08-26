@@ -2,19 +2,9 @@ import { query, queryOne } from './db'
 import { CHAT_COMPONENTS } from './chat-components'
 import { countTaskApprovals } from './task-approvals'
 
-export type Phase =
-  | 'REFLECTING'
-  | 'REVEAL'
-  | 'AGREEING'
-  | 'TASKS'
-  | 'CHECKIN_1'
-  | 'PLANT_1'
-  | 'CHECKIN_2'
-  | 'PLANT_2'
-  | 'DONE'
 
 interface TeamStatus {
-  phase: Phase
+  stage: number
   hasProjectManager: boolean
   teamSize: number
   reflectionsSubmitted: number
@@ -38,8 +28,8 @@ export async function getTeamStatus(teamId: string): Promise<TeamStatus> {
     [teamId]
   )
 
-  const teamRow = await queryOne<{ project_manager_id: string | null }>(
-    'SELECT project_manager_id FROM teams WHERE id = $1',
+  const teamRow = await queryOne<{ project_manager_id: string | null; stage: number }>(
+    'SELECT project_manager_id, stage FROM teams WHERE id = $1',
     [teamId]
   )
   const hasProjectManager = !!teamRow?.project_manager_id
@@ -111,18 +101,8 @@ export async function getTeamStatus(teamId: string): Promise<TeamStatus> {
   const plant2Resolved = !hasFlagsAfterCycle2 ||
     flagged2.every(c => (approvalByComponent.get(c) ?? 0) >= team_size)
 
-  // Derive phase
-  let phase: Phase = 'REFLECTING'
-  if (allReflected) phase = 'REVEAL'
-  if (allAgreed) phase = 'TASKS'
-  if (allAgreed && tasksApproved) phase = 'CHECKIN_1'
-  if (checkin1Count >= team_size) phase = 'PLANT_1'
-  if (checkin1Count >= team_size && plant1Resolved) phase = 'CHECKIN_2'
-  if (checkin2Count >= team_size) phase = 'PLANT_2'
-  if (checkin2Count >= team_size && plant2Resolved) phase = 'DONE'
-
   return {
-    phase,
+    stage: teamRow?.stage ?? 0,
     hasProjectManager,
     teamSize: team_size,
     reflectionsSubmitted,

@@ -31,6 +31,7 @@ export default function SignupPage() {
       if (!res.ok) throw new Error(data.error ?? 'Something went wrong.')
       await refresh()
       router.push('/')
+      router.refresh()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Something went wrong.')
     } finally {

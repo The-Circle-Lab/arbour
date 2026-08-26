@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useSession, getMembership } from '@/lib/session'
-import type { Phase } from '@/lib/phase'
 import { type TaskStatus, STATUS_LABELS, STATUS_COLORS, EDITABLE_STATUSES } from '@/lib/task-status'
 import { apiRequest } from '@/lib/api-client'
 
@@ -33,7 +32,7 @@ interface TeamData {
   assignment_brief: string | null
   project_manager_id: string | null
   members: Member[]
-  status: { phase: Phase; teamSize: number; tasksApproved: boolean }
+  status: { stage: number; teamSize: number; tasksApproved: boolean }
 }
 
 export default function TasksPage() {

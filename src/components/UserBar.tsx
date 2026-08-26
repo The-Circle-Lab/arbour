@@ -11,6 +11,7 @@ export function UserBar() {
     await fetch('/api/auth/logout', { method: 'POST' })
     await refresh()
     router.push('/login')
+    router.refresh()
   }
 
   if (loading || !user) return null
