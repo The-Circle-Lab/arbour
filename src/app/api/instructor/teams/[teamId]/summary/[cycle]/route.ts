@@ -5,10 +5,7 @@ import { queryOne } from '@/lib/db'
 import { requireInstructorTeam } from '@/lib/auth/instructor'
 import { generateInstructorCheckinSummary } from '@/lib/ai'
 import { ChatComponent } from '@/lib/chat-components'
-
-function isValidCycle(cycle: string): boolean {
-  return cycle === '1' || cycle === '2'
-}
+import { isValidCycle } from '@/lib/cycle'
 
 interface SummaryRow {
   team_id: string

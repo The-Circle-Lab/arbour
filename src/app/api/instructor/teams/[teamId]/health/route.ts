@@ -11,13 +11,18 @@ export async function GET(_req: Request, { params }: { params: Promise<{ teamId:
     if (!access) return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
 
     const events = await query<{
+      id: string
       occurred_at: string
       level: number
       delta: number
       source: PlantHealthSource
       cycle_number: number | null
     }>(
-      'SELECT occurred_at, level, delta, source, cycle_number FROM plant_health_events WHERE team_id = $1 ORDER BY occurred_at',
+      // id is a tiebreaker so a batch insert sharing one occurred_at still
+      // yields a deterministic "latest" event (see also
+      // src/app/api/courses/[courseId]/teams/route.ts and
+      // src/lib/plant-health.ts, which order the same way).
+      'SELECT id, occurred_at, level, delta, source, cycle_number FROM plant_health_events WHERE team_id = $1 ORDER BY occurred_at ASC, id ASC',
       [teamId]
     )
 

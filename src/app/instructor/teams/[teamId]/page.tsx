@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { PlantVisual, PLANT_TYPES, STATE_LABELS, type PlantState, type PlantType } from '@/components/PlantVisual'
+import { PlantVisual, isPlantType, STATE_LABELS, type PlantState, type PlantType } from '@/components/PlantVisual'
 import { TensionBreakdown } from '@/components/instructor/TensionBreakdown'
 import { HealthTimeline, type HealthEvent } from '@/components/instructor/HealthTimeline'
 import { ChatComponent } from '@/lib/chat-components'
@@ -52,10 +52,6 @@ interface SummaryRow {
   generated_at: string
 }
 
-function isPlantType(value: string | null): value is PlantType {
-  return value !== null && PLANT_TYPES.some(t => t === value)
-}
-
 export default function InstructorTeamDetailPage() {
   const { teamId } = useParams<{ teamId: string }>()
   const router = useRouter()
@@ -66,46 +62,65 @@ export default function InstructorTeamDetailPage() {
   const [selectedCycle, setSelectedCycle] = useState<number | null>(null)
   const [tension, setTension] = useState<TensionData | null>(null)
   const [tensionReady, setTensionReady] = useState(true)
+  const [tensionError, setTensionError] = useState('')
   const [summary, setSummary] = useState<SummaryRow | null>(null)
   const [generatingSummary, setGeneratingSummary] = useState(false)
   const [notFound, setNotFound] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
 
   useEffect(() => {
+    let ignore = false
     async function load() {
-      const [teamRes, healthRes, cyclesRes] = await Promise.all([
-        fetch(`/api/instructor/teams/${teamId}`),
-        fetch(`/api/instructor/teams/${teamId}/health`),
-        fetch(`/api/instructor/teams/${teamId}/cycles`),
-      ])
-      if (!teamRes.ok || !healthRes.ok || !cyclesRes.ok) { setNotFound(true); setLoading(false); return }
+      try {
+        const [teamRes, healthRes, cyclesRes] = await Promise.all([
+          fetch(`/api/instructor/teams/${teamId}`),
+          fetch(`/api/instructor/teams/${teamId}/health`),
+          fetch(`/api/instructor/teams/${teamId}/cycles`),
+        ])
+        if (ignore) return
+        if (!teamRes.ok || !healthRes.ok || !cyclesRes.ok) { setNotFound(true); return }
 
-      const teamData: TeamInfo = await teamRes.json()
-      const healthData: HealthData = await healthRes.json()
-      const cyclesData: { availableCycles: number[] } = await cyclesRes.json()
+        const teamData: TeamInfo = await teamRes.json()
+        const healthData: HealthData = await healthRes.json()
+        const cyclesData: { availableCycles: number[] } = await cyclesRes.json()
+        if (ignore) return
 
-      setTeam(teamData)
-      setHealth(healthData)
-      setAvailableCycles(cyclesData.availableCycles)
-      setSelectedCycle(cyclesData.availableCycles[cyclesData.availableCycles.length - 1] ?? null)
-      setLoading(false)
+        setTeam(teamData)
+        setHealth(healthData)
+        setAvailableCycles(cyclesData.availableCycles)
+        setSelectedCycle(cyclesData.availableCycles[cyclesData.availableCycles.length - 1] ?? null)
+      } catch (e) {
+        if (!ignore) setLoadError(e instanceof Error ? e.message : 'Something went wrong.')
+      } finally {
+        if (!ignore) setLoading(false)
+      }
     }
     load()
+    return () => { ignore = true }
   }, [teamId])
 
+  const latestCycleRef = useRef<number | null>(null)
+
   const loadTension = useCallback(async (cycle: number) => {
+    latestCycleRef.current = cycle
     setTension(null)
     setSummary(null)
+    setTensionError('')
     const res = await fetch(`/api/instructor/teams/${teamId}/tension/${cycle}`)
+    if (latestCycleRef.current !== cycle) return
     if (res.status === 202) { setTensionReady(false); return }
-    if (!res.ok) return
+    if (!res.ok) { setTensionError('Could not load the tension breakdown for this cycle.'); return }
     setTensionReady(true)
     const data: TensionData = await res.json()
+    if (latestCycleRef.current !== cycle) return
     setTension(data)
 
     const summaryRes = await fetch(`/api/instructor/teams/${teamId}/summary/${cycle}`)
+    if (latestCycleRef.current !== cycle) return
     if (summaryRes.ok) {
       const summaryData: { cached: SummaryRow | null } = await summaryRes.json()
+      if (latestCycleRef.current !== cycle) return
       setSummary(summaryData.cached)
     }
   }, [teamId])
@@ -133,6 +148,19 @@ export default function InstructorTeamDetailPage() {
     return (
       <main className="min-h-screen bg-stone-50 flex items-center justify-center">
         <p className="text-stone-400 text-sm">Loading…</p>
+      </main>
+    )
+  }
+
+  if (loadError) {
+    return (
+      <main className="min-h-screen bg-stone-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-stone-500 text-sm mb-3">{loadError}</p>
+          <button onClick={() => window.location.reload()} className="text-xs text-green-700 hover:text-green-800 font-medium">
+            Try again
+          </button>
+        </div>
       </main>
     )
   }
@@ -218,10 +246,21 @@ export default function InstructorTeamDetailPage() {
                 ))}
               </div>
 
-              {!tensionReady && (
+              {tensionError && (
+                <div className="text-center">
+                  <p className="text-stone-500 text-sm mb-3">{tensionError}</p>
+                  <button
+                    onClick={() => selectedCycle !== null && loadTension(selectedCycle)}
+                    className="text-xs text-green-700 hover:text-green-800 font-medium"
+                  >
+                    Try again
+                  </button>
+                </div>
+              )}
+              {!tensionError && !tensionReady && (
                 <p className="text-sm text-stone-400 italic">Waiting on this team to finish this check-in cycle.</p>
               )}
-              {tensionReady && tension && (
+              {!tensionError && tensionReady && tension && (
                 <TensionBreakdown
                   componentScores={tension.componentScores}
                   flaggedComponents={tension.flaggedComponents}

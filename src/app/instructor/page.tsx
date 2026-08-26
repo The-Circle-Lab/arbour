@@ -3,9 +3,10 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useInstructorCourses } from '@/lib/instructor-context'
-import { PlantVisual, STATE_LABELS, PLANT_TYPES, type PlantState, type PlantType } from '@/components/PlantVisual'
+import { PlantVisual, STATE_LABELS, isPlantType, type PlantState, type PlantType } from '@/components/PlantVisual'
 import { Modal } from '@/components/Modal'
 import { STAGE_LABELS } from '@/lib/team-stage'
+import { useCreateCourse, CreateCourseForm, CreateCourseSuccess } from '@/components/instructor/CreateCourseFlow'
 
 interface CourseTeam {
   id: string
@@ -16,10 +17,6 @@ interface CourseTeam {
   stage: number
   state: PlantState
   latestCycle: number | null
-}
-
-function isPlantType(value: string | null): value is PlantType {
-  return value !== null && PLANT_TYPES.some(t => t === value)
 }
 
 const STATE_PILL_STYLES: Record<PlantState, string> = {
@@ -34,10 +31,9 @@ export default function InstructorDashboardPage() {
   const { courses, loading: coursesLoading, selectedCourseId, refreshCourses } = useInstructorCourses()
   const [teams, setTeams] = useState<CourseTeam[] | null>(null)
   const [loadingTeams, setLoadingTeams] = useState(false)
-  const [newCourseName, setNewCourseName] = useState('')
-  const [creating, setCreating] = useState(false)
-  const [createdCode, setCreatedCode] = useState<string | null>(null)
-  const [error, setError] = useState('')
+  const { name: newCourseName, setName: setNewCourseName, creating, error, createdCode, submit: handleCreateCourse, reset: resetCreateCourse } = useCreateCourse({
+    onCreated: () => refreshCourses(),
+  })
   const [copied, setCopied] = useState(false)
 
   const selectedCourse = courses.find(c => c.id === selectedCourseId) ?? null
@@ -67,28 +63,6 @@ export default function InstructorDashboardPage() {
     return () => { ignore = true; clearInterval(interval) }
   }, [selectedCourseId])
 
-  async function handleCreateCourse() {
-    if (!newCourseName.trim()) return
-    setCreating(true)
-    setError('')
-    try {
-      const res = await fetch('/api/courses', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newCourseName.trim() }),
-      })
-      const course = await res.json()
-      if (!res.ok) throw new Error(course.error ?? 'Something went wrong.')
-      setCreatedCode(course.join_code)
-      setNewCourseName('')
-      await refreshCourses()
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Something went wrong.')
-    } finally {
-      setCreating(false)
-    }
-  }
-
   if (coursesLoading) {
     return (
       <main className="min-h-screen bg-stone-50 flex items-center justify-center">
@@ -108,22 +82,13 @@ export default function InstructorDashboardPage() {
           <h1 className="text-2xl font-bold text-stone-800 mb-2">Welcome</h1>
           <p className="text-stone-500 text-sm mb-6">Create your first course to start tracking your students&apos; teams.</p>
           <div className="bg-white rounded-2xl shadow-sm border border-stone-100 p-6">
-            <div className="flex flex-col gap-3">
-              <input
-                className="border border-stone-300 rounded-lg px-4 py-3 text-stone-800 focus:outline-none focus:ring-2 focus:ring-green-600"
-                placeholder="Course name (e.g. CS446)"
-                value={newCourseName}
-                onChange={e => setNewCourseName(e.target.value)}
-              />
-              {error && <p className="text-red-500 text-sm">{error}</p>}
-              <button
-                onClick={handleCreateCourse}
-                disabled={creating}
-                className="w-full bg-green-700 text-white rounded-xl py-3 font-medium hover:bg-green-800 disabled:opacity-50 transition"
-              >
-                {creating ? 'Creating…' : 'Create course'}
-              </button>
-            </div>
+            <CreateCourseForm
+              name={newCourseName}
+              onNameChange={setNewCourseName}
+              onSubmit={handleCreateCourse}
+              creating={creating}
+              error={error}
+            />
           </div>
         </div>
       </main>
@@ -187,19 +152,10 @@ export default function InstructorDashboardPage() {
     </main>
     )}
 
-    <Modal open={!!createdCode} labelledBy="course-created-title" onClose={() => setCreatedCode(null)}>
+    <Modal open={!!createdCode} labelledBy="course-created-title" onClose={resetCreateCourse}>
       <div className="p-6">
         <h2 id="course-created-title" className="text-lg font-bold text-stone-800 mb-4">Course created</h2>
-        <p className="text-sm text-stone-600 mb-3">
-          This is your course code — please share it with your students so they can join your class.
-        </p>
-        <p className="text-2xl font-mono font-bold tracking-widest text-center text-green-700 bg-stone-50 rounded-xl py-4 mb-4">{createdCode}</p>
-        <button
-          onClick={() => setCreatedCode(null)}
-          className="w-full bg-green-700 text-white rounded-xl py-3 font-medium hover:bg-green-800 transition"
-        >
-          Got it
-        </button>
+        {createdCode && <CreateCourseSuccess joinCode={createdCode} onDone={resetCreateCourse} doneLabel="Got it" />}
       </div>
     </Modal>
     </>

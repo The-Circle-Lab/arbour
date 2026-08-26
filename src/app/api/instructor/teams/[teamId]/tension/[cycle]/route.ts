@@ -3,10 +3,7 @@ import { query, queryOne } from '@/lib/db'
 import { computePlantState, CheckinRow } from '@/lib/plant-logic'
 import { ChatComponent } from '@/lib/chat-components'
 import { requireInstructorTeam } from '@/lib/auth/instructor'
-
-function isValidCycle(cycle: string): boolean {
-  return cycle === '1' || cycle === '2'
-}
+import { isValidCycle } from '@/lib/cycle'
 
 // Team-scoped, no join-code membership check — instructor auth already
 // scopes access, same shape of query as src/app/api/plant/[code]/[cycle]/route.ts
@@ -21,19 +18,28 @@ export async function GET(_req: Request, { params }: { params: Promise<{ teamId:
     if (!isValidCycle(cycle)) return NextResponse.json({ error: 'Invalid cycle' }, { status: 400 })
     const cycleNum = Number(cycle)
 
+    const [{ team_size }] = await query<{ team_size: number }>(
+      'SELECT COUNT(*)::int AS team_size FROM members WHERE team_id = $1',
+      [teamId]
+    )
+
+    const submittedRows = await query<{ member_id: string; count: number }>(
+      `SELECT ci.member_id, COUNT(DISTINCT ci.component)::int AS count
+       FROM checkins ci
+       JOIN members m ON m.id = ci.member_id
+       WHERE m.team_id = $1 AND ci.cycle_number = $2
+       GROUP BY ci.member_id`,
+      [teamId, cycleNum]
+    )
+    const allSubmitted = submittedRows.filter(r => r.count >= 6).length >= team_size
+    if (!allSubmitted) return NextResponse.json({ ready: false }, { status: 202 })
+
     const checkinRows = await query<CheckinRow>(
       `SELECT ci.component, ci.response_data
        FROM checkins ci
        JOIN members m ON m.id = ci.member_id
        WHERE m.team_id = $1 AND ci.cycle_number = $2`,
       [teamId, cycleNum]
-    )
-
-    if (checkinRows.length === 0) return NextResponse.json({ ready: false }, { status: 202 })
-
-    const [{ team_size }] = await query<{ team_size: number }>(
-      'SELECT COUNT(*)::int AS team_size FROM members WHERE team_id = $1',
-      [teamId]
     )
 
     const plantResult = computePlantState(checkinRows, team_size)

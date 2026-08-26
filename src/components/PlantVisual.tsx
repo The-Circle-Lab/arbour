@@ -6,6 +6,10 @@ export type PlantState = 'thriving' | 'doing_okay' | 'wilting' | 'dead'
 export type PlantType = 'default' | 'cactus' | 'flower' | 'tree'
 export const PLANT_TYPES: PlantType[] = ['default', 'cactus', 'flower', 'tree']
 
+export function isPlantType(value: string | null): value is PlantType {
+  return value !== null && PLANT_TYPES.some(t => t === value)
+}
+
 interface Props {
   state: PlantState
   plantType?: PlantType

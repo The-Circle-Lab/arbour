@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useSession } from '@/lib/session'
 import { useInstructorCourses } from '@/lib/instructor-context'
 import { Modal } from '@/components/Modal'
+import { useCreateCourse, CreateCourseForm, CreateCourseSuccess } from '@/components/instructor/CreateCourseFlow'
 
 // The course switcher lives inline in the global navbar (UserBar), between
 // the "Logged in as" text and "Log out" — a small anchored dropdown rather
@@ -13,10 +14,12 @@ export function CourseSwitcher() {
   const { courses, selectedCourseId, setSelectedCourseId, refreshCourses } = useInstructorCourses()
   const [open, setOpen] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
-  const [newCourseName, setNewCourseName] = useState('')
-  const [creating, setCreating] = useState(false)
-  const [createdCode, setCreatedCode] = useState<string | null>(null)
-  const [error, setError] = useState('')
+  const { name: newCourseName, setName: setNewCourseName, creating, error, createdCode, submit: handleCreateCourse, reset: resetCreateCourse } = useCreateCourse({
+    onCreated: async course => {
+      await refreshCourses()
+      setSelectedCourseId(course.id)
+    },
+  })
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null)
   const [deleting, setDeleting] = useState(false)
   const containerRef = useRef<HTMLDivElement | null>(null)
@@ -46,33 +49,9 @@ export function CourseSwitcher() {
 
   const selectedCourse = courses.find(c => c.id === selectedCourseId) ?? null
 
-  async function handleCreateCourse() {
-    if (!newCourseName.trim()) return
-    setCreating(true)
-    setError('')
-    try {
-      const res = await fetch('/api/courses', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newCourseName.trim() }),
-      })
-      const course = await res.json()
-      if (!res.ok) throw new Error(course.error ?? 'Something went wrong.')
-      setCreatedCode(course.join_code)
-      setNewCourseName('')
-      await refreshCourses()
-      setSelectedCourseId(course.id)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Something went wrong.')
-    } finally {
-      setCreating(false)
-    }
-  }
-
   function closeModal() {
     setModalOpen(false)
-    setCreatedCode(null)
-    setError('')
+    resetCreateCourse()
   }
 
   async function confirmDeleteCourse() {
@@ -141,31 +120,16 @@ export function CourseSwitcher() {
         <div className="p-6">
           <h2 id="new-course-title" className="text-lg font-bold text-stone-800 mb-4">New course</h2>
           {createdCode ? (
-            <div>
-              <p className="text-sm text-stone-600 mb-3">This is your course code — please share it with your students so they can join your class.</p>
-              <p className="text-2xl font-mono font-bold tracking-widest text-center text-green-700 bg-stone-50 rounded-xl py-4 mb-4">{createdCode}</p>
-              <button onClick={closeModal} className="w-full bg-green-700 text-white rounded-xl py-3 font-medium hover:bg-green-800 transition">
-                Done
-              </button>
-            </div>
+            <CreateCourseSuccess joinCode={createdCode} onDone={closeModal} />
           ) : (
-            <div className="flex flex-col gap-3">
-              <input
-                className="border border-stone-300 rounded-lg px-4 py-3 text-stone-800 focus:outline-none focus:ring-2 focus:ring-green-600"
-                placeholder="Course name (e.g. CS446)"
-                value={newCourseName}
-                onChange={e => setNewCourseName(e.target.value)}
-                autoFocus
-              />
-              {error && <p className="text-red-500 text-sm">{error}</p>}
-              <button
-                onClick={handleCreateCourse}
-                disabled={creating}
-                className="w-full bg-green-700 text-white rounded-xl py-3 font-medium hover:bg-green-800 disabled:opacity-50 transition"
-              >
-                {creating ? 'Creating…' : 'Create course'}
-              </button>
-            </div>
+            <CreateCourseForm
+              name={newCourseName}
+              onNameChange={setNewCourseName}
+              onSubmit={handleCreateCourse}
+              creating={creating}
+              error={error}
+              autoFocus
+            />
           )}
         </div>
       </Modal>

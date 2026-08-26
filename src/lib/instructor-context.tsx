@@ -35,17 +35,24 @@ export function InstructorCourseProvider({ children }: { children: ReactNode }) 
 
   const refreshCourses = useCallback(async () => {
     if (!isInstructor) { setLoading(false); return }
-    const res = await fetch('/api/courses')
-    if (!res.ok) { setLoading(false); return }
-    const data: { courses: InstructorCourse[] } = await res.json()
-    setCourses(data.courses)
-    // Falls back to the first remaining course if the previously-selected one
-    // is gone (e.g. just deleted), rather than leaving selectedCourseId
-    // pointing at a course that no longer appears in the list.
-    setSelectedCourseId(current =>
-      current && data.courses.some(c => c.id === current) ? current : (data.courses[0]?.id ?? null)
-    )
-    setLoading(false)
+    // A real fetch is about to start: make sure `loading` reflects that even
+    // if a previous (not-an-instructor) pass already set it to false, so
+    // consumers never see loading=false with a stale, pre-fetch courses list.
+    setLoading(true)
+    try {
+      const res = await fetch('/api/courses')
+      if (!res.ok) { return }
+      const data: { courses: InstructorCourse[] } = await res.json()
+      setCourses(data.courses)
+      // Falls back to the first remaining course if the previously-selected one
+      // is gone (e.g. just deleted), rather than leaving selectedCourseId
+      // pointing at a course that no longer appears in the list.
+      setSelectedCourseId(current =>
+        current && data.courses.some(c => c.id === current) ? current : (data.courses[0]?.id ?? null)
+      )
+    } finally {
+      setLoading(false)
+    }
   }, [isInstructor])
 
   useEffect(() => {
