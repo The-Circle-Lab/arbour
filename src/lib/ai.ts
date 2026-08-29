@@ -73,10 +73,31 @@ export interface RevealAIResult {
   flaggedComponents: ChatComponent[]
 }
 
+// Shared by generateRevealComparison and generateCheckinComparison — both ask
+// the model to analyze all six CHAT components in one call (componentAnalysisSchema
+// requires every key), then split that into a per-component comment map plus
+// the flagged subset.
+function splitComponentAnalysis(components: ComponentAnalysisResponse['components']): {
+  perComponent: Record<ChatComponent, string>
+  flaggedComponents: ChatComponent[]
+} {
+  return {
+    perComponent: {
+      object: components.object.comment,
+      subject: components.subject.comment,
+      division_of_labor: components.division_of_labor.comment,
+      rules: components.rules.comment,
+      tools: components.tools.comment,
+      community: components.community.comment,
+    },
+    flaggedComponents: CHAT_COMPONENTS.filter(c => components[c].flagged),
+  }
+}
+
 export async function generateRevealComparison(members: MemberReflection[], projectContext?: string): Promise<RevealAIResult> {
   const memberSummaries = members.map(m => {
-    const sections = Object.entries(m.responses).map(([comp, data]) =>
-      `[${COMPONENT_LABELS[comp as ChatComponent]}]\n${JSON.stringify(data, null, 2)}`
+    const sections = CHAT_COMPONENTS.map(comp =>
+      `[${COMPONENT_LABELS[comp]}]\n${JSON.stringify(m.responses[comp], null, 2)}`
     ).join('\n\n')
     return `=== ${m.displayName} ===\n${sections}`
   }).join('\n\n')
@@ -99,15 +120,7 @@ ${NO_MEMBER_ATTRIBUTION_RULE}`
 
   const message = await sendAiApiRequest<ComponentAnalysisResponse>('fast_model', 1500, prompt, componentAnalysisSchema)
 
-  const perComponent: Record<ChatComponent, string> = {} as Record<ChatComponent, string>
-  const flaggedComponents: ChatComponent[] = []
-
-  for (const [comp, v] of Object.entries(message.components)) {
-    perComponent[comp as ChatComponent] = v.comment
-    if (v.flagged) flaggedComponents.push(comp as ChatComponent)
-  }
-
-  return { perComponent, flaggedComponents }
+  return splitComponentAnalysis(message.components)
 }
 
 export async function generateAgreementDraft(
@@ -162,7 +175,7 @@ Rewrite the agreement as 1-2 sentences in first-person plural (starting with "We
 
 export interface CheckinSummary {
   displayName: string
-  checkins: Record<ChatComponent, { rating?: string; notes?: Record<string, string> }>
+  checkins: Partial<Record<ChatComponent, { rating?: string; notes?: Record<string, string> }>>
 }
 
 export interface CheckinComparisonResult {
@@ -172,18 +185,23 @@ export interface CheckinComparisonResult {
 
 export async function generateCheckinComparison(
   members: CheckinSummary[],
-  agreements: Record<ChatComponent, string>,
+  agreements: Partial<Record<ChatComponent, string>>,
   cycleNumber: number,
 ): Promise<CheckinComparisonResult> {
-  const agreementText = Object.entries(agreements)
-    .map(([comp, text]) => `${COMPONENT_LABELS[comp as ChatComponent]}: ${text}`)
+  // Presence check, not truthiness — an agreement explicitly cleared to an
+  // empty string is still a row that exists and should still be listed,
+  // distinct from a component that was never agreed on at all.
+  const agreementText = CHAT_COMPONENTS
+    .filter(c => agreements[c] !== undefined)
+    .map(c => `${COMPONENT_LABELS[c]}: ${agreements[c]}`)
     .join('\n')
 
   const checkinText = members.map(m => {
-    const lines = Object.entries(m.checkins).map(([comp, data]) => {
-      const r = data.rating ?? 'no rating'
-      const notes = data.notes ? Object.entries(data.notes).map(([k, v]) => `  ${k}: ${v}`).join('\n') : ''
-      return `  ${COMPONENT_LABELS[comp as ChatComponent]}: ${r}${notes ? '\n' + notes : ''}`
+    const lines = CHAT_COMPONENTS.map(comp => {
+      const data = m.checkins[comp]
+      const r = data?.rating ?? 'no rating'
+      const notes = data?.notes ? Object.entries(data.notes).map(([k, v]) => `  ${k}: ${v}`).join('\n') : ''
+      return `  ${COMPONENT_LABELS[comp]}: ${r}${notes ? '\n' + notes : ''}`
     }).join('\n')
     return `=== ${m.displayName} ===\n${lines}`
   }).join('\n\n')
@@ -204,14 +222,7 @@ ${NO_MEMBER_ATTRIBUTION_RULE}`
 
   const message = await sendAiApiRequest<ComponentAnalysisResponse>('fast_model', 1500, prompt, componentAnalysisSchema)
 
-  const perComponent: Record<ChatComponent, string> = {} as Record<ChatComponent, string>
-  const flaggedComponents: ChatComponent[] = []
-  for (const [comp, v] of Object.entries(message.components)) {
-    perComponent[comp as ChatComponent] = v.comment
-    if (v.flagged) flaggedComponents.push(comp as ChatComponent)
-  }
-
-  return { perComponent, flaggedComponents }
+  return splitComponentAnalysis(message.components)
 }
 
 export interface NudgeResult {
@@ -221,18 +232,23 @@ export interface NudgeResult {
 
 export async function generateCheckinNudge(
   members: CheckinSummary[],
-  agreements: Record<ChatComponent, string>,
+  agreements: Partial<Record<ChatComponent, string>>,
   cycleNumber: number
 ): Promise<NudgeResult> {
-  const agreementText = Object.entries(agreements)
-    .map(([comp, text]) => `${COMPONENT_LABELS[comp as ChatComponent]}: ${text}`)
+  // Presence check, not truthiness — an agreement explicitly cleared to an
+  // empty string is still a row that exists and should still be listed,
+  // distinct from a component that was never agreed on at all.
+  const agreementText = CHAT_COMPONENTS
+    .filter(c => agreements[c] !== undefined)
+    .map(c => `${COMPONENT_LABELS[c]}: ${agreements[c]}`)
     .join('\n')
 
   const checkinText = members.map(m => {
-    const lines = Object.entries(m.checkins).map(([comp, data]) => {
-      const r = data.rating ?? 'no rating'
-      const notes = data.notes ? Object.entries(data.notes).map(([k, v]) => `  ${k}: ${v}`).join('\n') : ''
-      return `  ${COMPONENT_LABELS[comp as ChatComponent]}: ${r}${notes ? '\n' + notes : ''}`
+    const lines = CHAT_COMPONENTS.map(comp => {
+      const data = m.checkins[comp]
+      const r = data?.rating ?? 'no rating'
+      const notes = data?.notes ? Object.entries(data.notes).map(([k, v]) => `  ${k}: ${v}`).join('\n') : ''
+      return `  ${COMPONENT_LABELS[comp]}: ${r}${notes ? '\n' + notes : ''}`
     }).join('\n')
     return `${m.displayName}:\n${lines}`
   }).join('\n\n')
@@ -318,14 +334,16 @@ export async function generateTaskSuggestions(
     project.deadline ? `Team deadline: ${project.deadline}` : '',
   ].filter(Boolean).join('\n') || 'No project details were provided.'
 
-  const agreementSection = (['object', 'division_of_labor'] as ChatComponent[])
+  const taskRelevantComponents: ChatComponent[] = ['object', 'division_of_labor']
+  const agreementSection = taskRelevantComponents
     .filter(c => agreements[c])
     .map(c => `${COMPONENT_LABELS[c]}: ${agreements[c]}`)
     .join('\n') || 'No agreement text available yet.'
 
   const memberSection = members.map(m => {
+    const preferredRole = m.subject.preferred_role
     const bits = [
-      m.subject.preferred_role ? `Preferred contributor style: ${Array.isArray(m.subject.preferred_role) ? (m.subject.preferred_role as string[]).join(', ') : m.subject.preferred_role}` : '',
+      preferredRole ? `Preferred contributor style: ${Array.isArray(preferredRole) ? preferredRole.join(', ') : preferredRole}` : '',
       m.divisionOfLabor.expected_role ? `Wants to lead: ${m.divisionOfLabor.expected_role}` : '',
       m.divisionOfLabor.fair_split ? `Fair split preference: ${m.divisionOfLabor.fair_split}` : '',
       m.divisionOfLabor.avoid ? `Wants to avoid: ${m.divisionOfLabor.avoid}` : '',
@@ -446,7 +464,8 @@ export async function generateDeadlineActionSuggestions(
   members: { id: string; displayName: string }[],
   currentAssigneeId: string | null
 ): Promise<DeadlineActionSuggestion[]> {
-  const agreementSection = (['rules', 'division_of_labor'] as ChatComponent[])
+  const deadlineRelevantComponents: ChatComponent[] = ['rules', 'division_of_labor']
+  const agreementSection = deadlineRelevantComponents
     .filter(c => agreements[c])
     .map(c => `${COMPONENT_LABELS[c]}: ${agreements[c]}`)
     .join('\n') || 'No agreement text available.'
@@ -485,6 +504,53 @@ For each suggestion:
     extendTime: s.extend_time,
     reassignMemberId: s.reassign_member_id,
   }))
+}
+
+const instructorSummarySchema = {
+  type: 'object',
+  properties: {
+    summary: { type: 'string' },
+    watch_points: { type: 'array', items: { type: 'string' } },
+  },
+  required: ['summary', 'watch_points'],
+  additionalProperties: false,
+}
+
+export interface InstructorSummaryResult {
+  summary: string
+  watchPoints: string[]
+}
+
+// Synthesizes the already-generated per-component prose (from
+// generateCheckinComparison) into a short instructor-facing read, rather
+// than re-deriving anything from raw check-in data itself.
+export async function generateInstructorCheckinSummary(
+  teamContext: { projectTitle: string | null },
+  cycleNumber: number,
+  flaggedComponents: ChatComponent[],
+  perComponent: Record<ChatComponent, string>,
+): Promise<InstructorSummaryResult> {
+  const projectSection = teamContext.projectTitle ? `Project: ${teamContext.projectTitle}\n` : ''
+
+  const componentSection = CHAT_COMPONENTS
+    .map(c => `${COMPONENT_LABELS[c]}${flaggedComponents.includes(c) ? ' (flagged)' : ''}: ${perComponent[c] ?? 'No note available.'}`)
+    .join('\n')
+
+  const prompt = `You are writing a short instructor-facing read of a student team's check-in (cycle ${cycleNumber}), using CHAT (Cultural-Historical Activity Theory).
+${projectSection}
+Per-component analysis already generated for this team:
+${componentSection}
+
+Write a short plain-language paragraph (3-4 sentences) summarizing how this team is doing overall, for an instructor scanning many teams quickly. Then list up to 3 short "watch point" bullets naming the most important things this instructor should keep an eye on — based only on what's flagged above. If nothing is flagged, return an empty watch_points list and say so plainly in the summary.
+
+${NO_MEMBER_ATTRIBUTION_RULE}`
+
+  const message = await sendAiApiRequest<{ summary: string; watch_points: string[] }>('fast_model', 500, prompt, instructorSummarySchema)
+
+  return {
+    summary: message.summary,
+    watchPoints: message.watch_points,
+  }
 }
 
 const finalReportSchema = {

@@ -9,6 +9,10 @@ export const CHAT_COMPONENTS = [
 
 export type ChatComponent = (typeof CHAT_COMPONENTS)[number]
 
+export function isChatComponent(value: string): value is ChatComponent {
+  return CHAT_COMPONENTS.some(c => c === value)
+}
+
 export const COMPONENT_LABELS: Record<ChatComponent, string> = {
   object: 'Objective',
   subject: 'Your Role & Goals',

@@ -5,7 +5,7 @@ export type PlantHealthSource = 'deadline_missed' | 'task_recovered' | 'checkin'
 
 // Index = level. New teams with no ledger rows yet default to level 3 (thriving).
 const LEVEL_STATES: PlantState[] = ['dead', 'wilting', 'doing_okay', 'thriving']
-const DEFAULT_LEVEL = 3
+export const DEFAULT_LEVEL = 3
 
 // Advisory-lock classid for plant-health ledger writes. Paired with
 // pg_advisory_xact_lock's 2-arg form so this never collides with unrelated
