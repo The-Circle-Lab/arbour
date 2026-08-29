@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server'
-import { query, queryOne } from '@/lib/db'
+import { queryOne } from '@/lib/db'
 import { getTeamStatus } from '@/lib/phase'
 import { getCurrentPlantState } from '@/lib/plant-health'
 import { requireTeamMember } from '@/lib/auth/team-access'
+import { getTeamMembers } from '@/lib/team-members'
 
 export async function GET(_req: Request, { params }: { params: Promise<{ code: string }> }) {
   const { code } = await params
@@ -16,14 +17,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ code: s
   )
   if (!team) return NextResponse.json({ error: 'Team not found' }, { status: 404 })
 
-  const members = await query<{ id: string; display_name: string; pronouns: string | null; joined_at: string }>(
-    `SELECT m.id, u.display_name, u.pronouns, m.joined_at
-     FROM members m
-     JOIN users u ON u.id = m.user_id
-     WHERE m.team_id = $1
-     ORDER BY m.joined_at`,
-    [team.id]
-  )
+  const members = await getTeamMembers(team.id)
 
   const [status, plant_state] = await Promise.all([
     getTeamStatus(team.id),

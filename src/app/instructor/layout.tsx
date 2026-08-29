@@ -2,7 +2,7 @@
 
 import { useEffect, ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
-import { useSession } from '@/lib/session'
+import { useSession, isInstructorUser } from '@/lib/session'
 
 // The root layout (src/app/layout.tsx) already renders <UserBar /> above
 // {children} for every page — instructor pages get the same topbar as the
@@ -13,10 +13,10 @@ export default function InstructorLayout({ children }: { children: ReactNode }) 
 
   useEffect(() => {
     if (loading) return
-    if (!user || user.role !== 'instructor') router.replace('/')
+    if (!isInstructorUser(user)) router.replace('/')
   }, [loading, user, router])
 
-  if (loading || !user || user.role !== 'instructor') {
+  if (loading || !isInstructorUser(user)) {
     return (
       <main className="min-h-screen bg-stone-50 flex items-center justify-center">
         <p className="text-stone-400 text-sm">Loading…</p>

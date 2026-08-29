@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
-import { query, queryOne } from '@/lib/db'
+import { queryOne } from '@/lib/db'
 import { requireInstructorTeam } from '@/lib/auth/instructor'
 import { getTeamStatus } from '@/lib/phase'
+import { getTeamMembers } from '@/lib/team-members'
 
 // Not in the original plan's endpoint list — added because the group-detail
 // page's header (team name, project title, plant type for PlantVisual) has
@@ -20,14 +21,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ teamId:
     )
     if (!team) return NextResponse.json({ error: 'Team not found' }, { status: 404 })
 
-    const members = await query<{ id: string; display_name: string; pronouns: string | null; joined_at: string }>(
-      `SELECT m.id, u.display_name, u.pronouns, m.joined_at
-       FROM members m
-       JOIN users u ON u.id = m.user_id
-       WHERE m.team_id = $1
-       ORDER BY m.joined_at`,
-      [teamId]
-    )
+    const members = await getTeamMembers(teamId)
 
     const status = await getTeamStatus(teamId)
 

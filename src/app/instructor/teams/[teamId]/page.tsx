@@ -44,6 +44,12 @@ interface TensionData {
   perComponentNotes: Record<ChatComponent, string> | null
 }
 
+type TensionStatus =
+  | { kind: 'loading' }
+  | { kind: 'not_ready' }
+  | { kind: 'error'; message: string }
+  | { kind: 'ready'; data: TensionData }
+
 interface SummaryRow {
   team_id: string
   cycle_number: number
@@ -58,11 +64,9 @@ export default function InstructorTeamDetailPage() {
 
   const [team, setTeam] = useState<TeamInfo | null>(null)
   const [health, setHealth] = useState<HealthData | null>(null)
-  const [availableCycles, setAvailableCycles] = useState<number[] | null>(null)
+  const [availableCycles, setAvailableCycles] = useState<number[]>([])
   const [selectedCycle, setSelectedCycle] = useState<number | null>(null)
-  const [tension, setTension] = useState<TensionData | null>(null)
-  const [tensionReady, setTensionReady] = useState(true)
-  const [tensionError, setTensionError] = useState('')
+  const [tensionStatus, setTensionStatus] = useState<TensionStatus>({ kind: 'loading' })
   const [summary, setSummary] = useState<SummaryRow | null>(null)
   const [generatingSummary, setGeneratingSummary] = useState(false)
   const [summaryError, setSummaryError] = useState('')
@@ -105,28 +109,32 @@ export default function InstructorTeamDetailPage() {
 
   const loadTension = useCallback(async (cycle: number) => {
     latestCycleRef.current = cycle
-    setTension(null)
+    setTensionStatus({ kind: 'loading' })
     setSummary(null)
-    setTensionError('')
     setSummaryError('')
-    // Fired together — the summary fetch doesn't depend on the tension
-    // response, so there's no reason to pay their latencies back-to-back.
-    const [res, summaryRes] = await Promise.all([
-      fetch(`/api/instructor/teams/${teamId}/tension/${cycle}`),
-      fetch(`/api/instructor/teams/${teamId}/summary/${cycle}`),
-    ])
-    if (latestCycleRef.current !== cycle) return
-    if (res.status === 202) { setTensionReady(false); return }
-    if (!res.ok) { setTensionError('Could not load the tension breakdown for this cycle.'); return }
-    setTensionReady(true)
-    const data: TensionData = await res.json()
-    if (latestCycleRef.current !== cycle) return
-    setTension(data)
-
-    if (summaryRes.ok) {
-      const summaryData: { cached: SummaryRow | null } = await summaryRes.json()
+    try {
+      // Fired together — the summary fetch doesn't depend on the tension
+      // response, so there's no reason to pay their latencies back-to-back.
+      const [res, summaryRes] = await Promise.all([
+        fetch(`/api/instructor/teams/${teamId}/tension/${cycle}`),
+        fetch(`/api/instructor/teams/${teamId}/summary/${cycle}`),
+      ])
       if (latestCycleRef.current !== cycle) return
-      setSummary(summaryData.cached)
+      if (res.status === 202) { setTensionStatus({ kind: 'not_ready' }); return }
+      if (!res.ok) { setTensionStatus({ kind: 'error', message: 'Could not load the tension breakdown for this cycle.' }); return }
+      const data: TensionData = await res.json()
+      if (latestCycleRef.current !== cycle) return
+      setTensionStatus({ kind: 'ready', data })
+
+      if (summaryRes.ok) {
+        const summaryData: { cached: SummaryRow | null } = await summaryRes.json()
+        if (latestCycleRef.current !== cycle) return
+        setSummary(summaryData.cached)
+      }
+    } catch {
+      if (latestCycleRef.current === cycle) {
+        setTensionStatus({ kind: 'error', message: 'Could not load the tension breakdown for this cycle.' })
+      }
     }
   }, [teamId])
 
@@ -143,10 +151,12 @@ export default function InstructorTeamDetailPage() {
     try {
       const res = await fetch(`/api/instructor/teams/${teamId}/summary/${cycle}`, { method: 'POST' })
       if (latestCycleRef.current !== cycle) return
-      if (!res.ok) { setSummaryError('Could not generate a summary for this cycle.'); return }
+      if (res.status === 202 || !res.ok) { setSummaryError('Could not generate a summary for this cycle.'); return }
       const data: SummaryRow = await res.json()
       if (latestCycleRef.current !== cycle) return
       setSummary(data)
+    } catch {
+      if (latestCycleRef.current === cycle) setSummaryError('Could not generate a summary for this cycle.')
     } finally {
       setGeneratingSummary(false)
     }
@@ -236,7 +246,7 @@ export default function InstructorTeamDetailPage() {
         <div className="bg-white rounded-2xl shadow-sm border border-stone-100 p-6 mb-6">
           <h2 className="text-lg font-bold text-stone-800 mb-4">Tension breakdown</h2>
 
-          {availableCycles === null || availableCycles.length === 0 ? (
+          {availableCycles.length === 0 ? (
             <p className="text-sm text-stone-400 italic">No check-in data yet.</p>
           ) : (
             <>
@@ -254,9 +264,9 @@ export default function InstructorTeamDetailPage() {
                 ))}
               </div>
 
-              {tensionError && (
+              {tensionStatus.kind === 'error' && (
                 <div className="text-center">
-                  <p className="text-stone-500 text-sm mb-3">{tensionError}</p>
+                  <p className="text-stone-500 text-sm mb-3">{tensionStatus.message}</p>
                   <button
                     onClick={() => selectedCycle !== null && loadTension(selectedCycle)}
                     className="text-xs text-green-700 hover:text-green-800 font-medium"
@@ -265,14 +275,14 @@ export default function InstructorTeamDetailPage() {
                   </button>
                 </div>
               )}
-              {!tensionError && !tensionReady && (
+              {tensionStatus.kind === 'not_ready' && (
                 <p className="text-sm text-stone-400 italic">Waiting on this team to finish this check-in cycle.</p>
               )}
-              {!tensionError && tensionReady && tension && (
+              {tensionStatus.kind === 'ready' && (
                 <TensionBreakdown
-                  componentScores={tension.componentScores}
-                  flaggedComponents={tension.flaggedComponents}
-                  perComponentNotes={tension.perComponentNotes}
+                  componentScores={tensionStatus.data.componentScores}
+                  flaggedComponents={tensionStatus.data.flaggedComponents}
+                  perComponentNotes={tensionStatus.data.perComponentNotes}
                 />
               )}
             </>
@@ -280,7 +290,7 @@ export default function InstructorTeamDetailPage() {
         </div>
 
         {/* AI summary */}
-        {selectedCycle !== null && tensionReady && tension && (
+        {selectedCycle !== null && tensionStatus.kind === 'ready' && (
           <div className="bg-white rounded-2xl shadow-sm border border-stone-100 p-6 mb-6">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-lg font-bold text-stone-800">Instructor summary</h2>

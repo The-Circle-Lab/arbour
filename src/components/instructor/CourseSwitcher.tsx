@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { useSession } from '@/lib/session'
+import { useSession, isInstructorUser } from '@/lib/session'
 import { useInstructorCourses } from '@/lib/instructor-context'
 import { Modal } from '@/components/Modal'
 import { useCreateCourse, CreateCourseForm, CreateCourseSuccess } from '@/components/instructor/CreateCourseFlow'
@@ -22,6 +22,7 @@ export function CourseSwitcher() {
   })
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
   const containerRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
@@ -45,7 +46,7 @@ export function CourseSwitcher() {
     }
   }, [open])
 
-  if (user?.role !== 'instructor') return null
+  if (!isInstructorUser(user)) return null
 
   const selectedCourse = courses.find(c => c.id === selectedCourseId) ?? null
 
@@ -57,12 +58,16 @@ export function CourseSwitcher() {
   async function confirmDeleteCourse() {
     if (!deleteTarget) return
     setDeleting(true)
+    setDeleteError('')
     try {
       const res = await fetch(`/api/courses/${deleteTarget.id}`, { method: 'DELETE' })
-      if (res.ok) await refreshCourses()
+      if (!res.ok) { setDeleteError('Could not delete this course.'); return }
+      await refreshCourses()
+      setDeleteTarget(null)
+    } catch {
+      setDeleteError('Could not delete this course.')
     } finally {
       setDeleting(false)
-      setDeleteTarget(null)
     }
   }
 
@@ -96,7 +101,7 @@ export function CourseSwitcher() {
                     <p className="text-xs text-stone-400 mt-0.5">{c.team_count} team{c.team_count === 1 ? '' : 's'} · code {c.join_code}</p>
                   </button>
                   <button
-                    onClick={() => { setDeleteTarget({ id: c.id, name: c.name }); setOpen(false) }}
+                    onClick={() => { setDeleteTarget({ id: c.id, name: c.name }); setDeleteError(''); setOpen(false) }}
                     aria-label={`Delete ${c.name}`}
                     className="px-2 text-stone-300 hover:text-red-600 transition"
                   >
@@ -134,15 +139,16 @@ export function CourseSwitcher() {
         </div>
       </Modal>
 
-      <Modal open={!!deleteTarget} labelledBy="delete-course-title" onClose={() => setDeleteTarget(null)}>
+      <Modal open={!!deleteTarget} labelledBy="delete-course-title" onClose={() => { setDeleteTarget(null); setDeleteError('') }}>
         <div className="p-6">
           <h2 id="delete-course-title" className="text-lg font-bold text-stone-800 mb-4">Delete course</h2>
           <p className="text-sm text-stone-600 mb-6">
-            Delete &quot;{deleteTarget?.name}&quot;? Students won&apos;t be able to join it anymore. Nothing already recorded for its teams is affected.
+            Delete &quot;{deleteTarget?.name}&quot;? Students won&apos;t be able to join it anymore, and you won&apos;t be able to see its teams&apos; data in your dashboard again. This can&apos;t be undone.
           </p>
+          {deleteError && <p className="text-sm text-red-600 mb-4">{deleteError}</p>}
           <div className="flex justify-end gap-2">
             <button
-              onClick={() => setDeleteTarget(null)}
+              onClick={() => { setDeleteTarget(null); setDeleteError('') }}
               className="px-3 py-1.5 border border-stone-200 text-stone-600 text-sm rounded-lg hover:bg-stone-50 transition"
             >
               Cancel

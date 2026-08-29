@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { requireCourseOwner } from '@/lib/auth/instructor'
-import { levelToState } from '@/lib/plant-health'
+import { levelToState, DEFAULT_LEVEL } from '@/lib/plant-health'
 
 export async function GET(_req: Request, { params }: { params: Promise<{ courseId: string }> }) {
   try {
@@ -19,9 +19,15 @@ export async function GET(_req: Request, { params }: { params: Promise<{ courseI
       stage: number
       level: number | null
     }>(
-      `SELECT t.id, t.name, t.join_code, t.project_title, t.deadline, t.plant_type, t.stage,
-        (SELECT level FROM plant_health_events WHERE team_id = t.id ORDER BY occurred_at DESC, id DESC LIMIT 1) AS level
+      `WITH latest_events AS (
+         SELECT DISTINCT ON (team_id) team_id, level
+         FROM plant_health_events
+         WHERE team_id IN (SELECT id FROM teams WHERE course_id = $1)
+         ORDER BY team_id, occurred_at DESC, id DESC
+       )
+       SELECT t.id, t.name, t.join_code, t.project_title, t.deadline, t.plant_type, t.stage, le.level
        FROM teams t
+       LEFT JOIN latest_events le ON le.team_id = t.id
        WHERE t.course_id = $1
        ORDER BY t.name`,
       [courseId]
@@ -35,7 +41,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ courseI
       deadline: row.deadline,
       plantType: row.plant_type,
       stage: row.stage,
-      state: levelToState(row.level ?? 3),
+      state: levelToState(row.level ?? DEFAULT_LEVEL),
     }))
 
     return NextResponse.json({ teams })

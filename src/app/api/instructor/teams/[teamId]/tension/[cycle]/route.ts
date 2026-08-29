@@ -22,14 +22,18 @@ export async function GET(_req: Request, { params }: { params: Promise<{ teamId:
     const readiness = await getPlantReadiness(teamId, cycleNum)
     if (!readiness.ready) return NextResponse.json({ ready: false }, { status: 202 })
 
-    const cached = await queryOne<{ per_component: Record<ChatComponent, string> | null }>(
-      'SELECT per_component FROM plant_states WHERE team_id = $1 AND cycle_number = $2',
+    const cached = await queryOne<{ per_component: Record<ChatComponent, string> | null; flagged_components: ChatComponent[] | null }>(
+      'SELECT per_component, flagged_components FROM plant_states WHERE team_id = $1 AND cycle_number = $2',
       [teamId, cycleNum]
     )
 
     return NextResponse.json({
       state: readiness.plantResult.state,
-      flaggedComponents: readiness.plantResult.flaggedComponents,
+      // Once a plant_states row exists, its flagged_components is the union of
+      // this numeric recomputation with the AI-judged flags (see
+      // src/app/api/plant/[code]/[cycle]/route.ts) — use that so this matches
+      // what the instructor summary was generated from.
+      flaggedComponents: cached?.flagged_components ?? readiness.plantResult.flaggedComponents,
       componentScores: readiness.plantResult.componentScores,
       perComponentNotes: cached?.per_component ?? null,
     })

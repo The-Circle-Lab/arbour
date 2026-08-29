@@ -9,7 +9,7 @@ export async function POST(req: Request) {
     if (!userId) return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
 
     const { name } = await req.json()
-    if (!name?.trim()) return NextResponse.json({ error: 'Name required' }, { status: 400 })
+    if (typeof name !== 'string' || !name.trim()) return NextResponse.json({ error: 'Name required' }, { status: 400 })
 
     const join_code = await generateUniqueJoinCode(async code => {
       const existing = await queryOne('SELECT id FROM courses WHERE join_code = $1', [code])

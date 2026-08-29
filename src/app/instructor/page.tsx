@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useInstructorCourses } from '@/lib/instructor-context'
-import { PlantVisual, STATE_LABELS, isPlantType, type PlantState, type PlantType } from '@/components/PlantVisual'
+import { PlantVisual, STATE_LABELS, STATE_COLORS, isPlantType, type PlantState } from '@/components/PlantVisual'
 import { Modal } from '@/components/Modal'
 import { STAGE_LABELS } from '@/lib/team-stage'
 import { useCreateCourse, CreateCourseForm, CreateCourseSuccess } from '@/components/instructor/CreateCourseFlow'
@@ -18,18 +18,12 @@ interface CourseTeam {
   state: PlantState
 }
 
-const STATE_PILL_STYLES: Record<PlantState, string> = {
-  thriving: 'bg-green-50 text-green-700 border-green-200',
-  doing_okay: 'bg-lime-50 text-lime-700 border-lime-200',
-  wilting: 'bg-amber-50 text-amber-700 border-amber-200',
-  dead: 'bg-red-50 text-red-700 border-red-200',
-}
-
 export default function InstructorDashboardPage() {
   const router = useRouter()
-  const { courses, loading: coursesLoading, selectedCourseId, refreshCourses } = useInstructorCourses()
+  const { courses, loading: coursesLoading, error: coursesError, selectedCourseId, refreshCourses } = useInstructorCourses()
   const [teams, setTeams] = useState<CourseTeam[] | null>(null)
   const [loadingTeams, setLoadingTeams] = useState(false)
+  const [teamsError, setTeamsError] = useState('')
   const { name: newCourseName, setName: setNewCourseName, creating, error, createdCode, submit: handleCreateCourse, reset: resetCreateCourse } = useCreateCourse({
     onCreated: () => refreshCourses(),
   })
@@ -37,28 +31,39 @@ export default function InstructorDashboardPage() {
 
   const selectedCourse = courses.find(c => c.id === selectedCourseId) ?? null
 
-  function copyJoinCode() {
+  async function copyJoinCode() {
     if (!selectedCourse) return
-    navigator.clipboard.writeText(selectedCourse.join_code)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    try {
+      await navigator.clipboard.writeText(selectedCourse.join_code)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      // Clipboard access denied/unavailable — leave the button reading "Copy".
+    }
   }
 
   useEffect(() => {
-    if (!selectedCourseId) { setTeams(null); return }
+    setTeams(null)
+    setTeamsError('')
+    if (!selectedCourseId) return
     let ignore = false
     setLoadingTeams(true)
     const poll = async () => {
       try {
         const res = await fetch(`/api/courses/${selectedCourseId}/teams`)
-        const data = res.ok ? await res.json() : { teams: [] }
-        if (!ignore) setTeams(data.teams)
+        if (!res.ok) throw new Error('Request failed')
+        const data = await res.json()
+        if (!ignore) { setTeams(data.teams); setTeamsError('') }
+      } catch {
+        if (!ignore) setTeamsError('Could not load teams.')
       } finally {
         if (!ignore) setLoadingTeams(false)
       }
     }
     poll()
-    const interval = setInterval(poll, 4000)
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') poll()
+    }, 4000)
     return () => { ignore = true; clearInterval(interval) }
   }, [selectedCourseId])
 
@@ -66,6 +71,19 @@ export default function InstructorDashboardPage() {
     return (
       <main className="min-h-screen bg-stone-50 flex items-center justify-center">
         <p className="text-stone-400 text-sm">Loading…</p>
+      </main>
+    )
+  }
+
+  if (coursesError && courses.length === 0) {
+    return (
+      <main className="min-h-screen bg-stone-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-stone-500 text-sm mb-3">{coursesError}</p>
+          <button onClick={() => refreshCourses()} className="text-xs text-green-700 hover:text-green-800 font-medium">
+            Try again
+          </button>
+        </div>
       </main>
     )
   }
@@ -120,7 +138,11 @@ export default function InstructorDashboardPage() {
         )}
 
         {loadingTeams || teams === null ? (
-          <p className="text-stone-400 text-sm">Loading teams…</p>
+          teamsError ? (
+            <p className="text-red-600 text-sm">{teamsError}</p>
+          ) : (
+            <p className="text-stone-400 text-sm">Loading teams…</p>
+          )
         ) : teams.length === 0 ? (
           <p className="text-stone-400 text-sm italic">No teams have joined this course yet.</p>
         ) : (
@@ -138,7 +160,7 @@ export default function InstructorDashboardPage() {
                   hideLabel
                 />
                 <h2 className="text-sm font-semibold text-stone-800 mt-1 line-clamp-1">{team.name}</h2>
-                <span className={`text-xs font-medium px-2 py-1 rounded-full border ${STATE_PILL_STYLES[team.state]}`}>
+                <span className={`text-xs font-medium px-2 py-1 rounded-full border ${STATE_COLORS[team.state].bg} ${STATE_COLORS[team.state].text} ${STATE_COLORS[team.state].border}`}>
                   {STATE_LABELS[team.state]}
                 </span>
                 <p className="text-xs text-stone-400 mt-0.5 line-clamp-1">{STAGE_LABELS[team.stage] ?? `Stage ${team.stage}`}</p>

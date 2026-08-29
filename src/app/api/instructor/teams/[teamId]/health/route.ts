@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { requireInstructorTeam } from '@/lib/auth/instructor'
-import { levelToState, type PlantHealthSource } from '@/lib/plant-health'
+import { getCurrentPlantState, type PlantHealthSource } from '@/lib/plant-health'
 
 // Direct data source for the health-over-time chart.
 export async function GET(_req: Request, { params }: { params: Promise<{ teamId: string }> }) {
@@ -26,7 +26,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ teamId:
       [teamId]
     )
 
-    const currentState = levelToState(events[events.length - 1]?.level ?? 3)
+    const currentState = await getCurrentPlantState(teamId)
 
     return NextResponse.json({ events, currentState })
   } catch (e) {
